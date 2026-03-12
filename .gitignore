@@ -1,0 +1,8 @@
+# Test workspace (large, contains iteration artifacts)
+doctrack-workspace/
+
+# OS files
+.DS_Store
+
+# Claude settings (user-specific)
+.claude/
