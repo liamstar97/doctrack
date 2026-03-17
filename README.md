@@ -35,6 +35,18 @@ Or install from this repository directly:
 claude install-skill https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill
 ```
 
+### Project-local install
+
+To install Doctrack for a single project (shared with your team via git):
+
+```bash
+# From your project root
+mkdir -p .claude/skills/doctrack
+curl -L https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill -o .claude/skills/doctrack/SKILL.md
+```
+
+Then commit `.claude/skills/doctrack/` to your repo. Claude Code will automatically discover and use the skill for anyone working in the project.
+
 ### Claude Desktop
 
 1. Download `doctrack.skill` from the [latest release](https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest)
@@ -74,7 +86,7 @@ When Claude starts working on a project with `.claude_docs/`, it reads the index
 
 ### Standard projects
 
-```
+```text
 project/
 ├── .claude_docs/
 │   ├── index.md                    # Master index
@@ -96,7 +108,7 @@ project/
 
 ### Monorepos
 
-```
+```text
 monorepo/
 ├── .claude_docs/
 │   └── index.md                    # Root coordination file
