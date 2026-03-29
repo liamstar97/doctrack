@@ -43,6 +43,17 @@ The vault contains these **node types**, connected by `[[wikilinks]]`:
 
 **Use Mermaid for all diagrams.** More token-efficient than ASCII art, natively rendered by Obsidian, and structured enough to parse and update programmatically. Use it for flowcharts, sequence diagrams, state machines, ER diagrams, class diagrams, and dependency graphs. Avoid ASCII art entirely.
 
+**Linking notes in Mermaid diagrams.** To make Mermaid nodes clickable links to other notes, use Obsidian's `internal-link` class — NOT wikilink syntax inside node labels:
+
+```mermaid
+graph TD
+    A[Auth Service] --> B[Token Validator]
+    B --> C[User Store]
+    class A,B,C internal-link;
+```
+
+The node label text must match the note filename (without `.md`). Nodes with the `internal-link` class become clickable in Obsidian's reading view. **Never put `[[wikilinks]]` inside Mermaid code blocks** — use wikilinks only in regular markdown content outside of code fences.
+
 ## Tag taxonomy
 
 Every note gets **three required tags** (applied via the obsidian skill's tag management):
@@ -159,8 +170,12 @@ last_updated: YYYY-MM-DD
 
 ## File Registry
 
+List individual source files, not directories. Each row maps a specific file to its feature and component.
+
 | Source File | Feature | Component |
 |------------|---------|-----------|
+| src/controllers/StoryController.java | story-service | story-controller |
+| src/services/StoryService.java | story-service | story-service-impl |
 ```
 
 Tags: `doctrack/type/index`, `doctrack/status/active`, `doctrack/audience/claude`
@@ -190,6 +205,7 @@ flowchart TD
     A[Entry Point] --> B{Router}
     B --> C[Handler]
     C --> D[Service Layer]
+    class A,B,C,D internal-link;
 ```
 
 ## Key Files
@@ -232,8 +248,8 @@ Single-sentence description.
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Active: trigger()
-    Active --> Idle: complete()
+    Idle --> Active : trigger()
+    Active --> Idle : complete()
 ```
 
 ## Relationships
@@ -270,6 +286,7 @@ graph LR
     C[Concept] --> F1[Feature A]
     C --> F2[Feature B]
     C --> I[Interface]
+    class C,F1,F2,I internal-link;
 ```
 
 - [[features/feature-a|Feature A]] — How it uses this concept
@@ -391,7 +408,7 @@ Tags: `doctrack/type/guide`, `doctrack/status/active`, `doctrack/audience/human`
 
 6. **Guides are procedural only.** Build, deploy, test, setup. Not explanations.
 
-7. **Mermaid everywhere.** All diagrams. No ASCII art.
+7. **Mermaid everywhere.** All diagrams. No ASCII art. Use `class NodeId internal-link;` to make nodes clickable links to notes — never put `[[wikilinks]]` inside Mermaid code blocks.
 
 8. **Incremental updates.** Surgical edits, not full rewrites.
 
@@ -540,12 +557,17 @@ Read source code on filesystem using Read, Glob, Grep.
 Spawn one subagent per feature. Each subagent:
 
 1. Reads all source files for the feature
-2. Writes feature note + component notes to vault
-3. Identifies concepts and decisions worth documenting
-4. Tags all notes
-5. Returns vault paths and file registry entries
+2. Writes the feature note to the vault
+3. **Writes component notes for every distinct logical unit** — controllers, services, models, repositories, utilities, middleware, config classes. Each class or module that has a clear responsibility gets its own component note.
+4. Identifies concepts and decisions worth documenting
+5. Tags all notes
+6. Returns vault paths and file registry entries (listing individual source files, not directories)
 
-**Component notes are required** for features with 2+ source files.
+**Component notes are not optional.** This is the most common gap in init output and the most important thing to get right. A feature with 2+ source files MUST have component notes. For large modules (10+ files), you should have many components — one per controller, service class, repository, model group, or utility. A 300-file module should produce 20-40 component notes, not zero.
+
+The feature note describes the big picture; components describe the internals. Without components, future sessions have to re-read source code to understand how a feature works — defeating the purpose of doctrack.
+
+**File registry entries must list individual source files**, not module directories. `story-service/src/main/java/.../StoryController.java` is useful; `story-service/` is not. Each subagent should return the specific files it analyzed and which component they belong to.
 
 ### Phase 3: Build knowledge graph
 
