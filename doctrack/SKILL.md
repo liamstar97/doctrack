@@ -174,8 +174,8 @@ List individual source files, not directories. Each row maps a specific file to 
 
 | Source File | Feature | Component |
 |------------|---------|-----------|
-| src/controllers/StoryController.java | story-service | story-controller |
-| src/services/StoryService.java | story-service | story-service-impl |
+| src/controllers/UserController.java | user-management | user-controller |
+| src/services/AuthService.java | authentication | auth-service-impl |
 ```
 
 Tags: `doctrack/type/index`, `doctrack/status/active`, `doctrack/audience/claude`
