@@ -71,7 +71,7 @@ Additional: `doctrack/project/{name}` (shared vaults), `doctrack/package/{name}`
 
 Runs at the start of every Claude session in a project with doctrack. Idempotent.
 
-1. **Detect vault**: Check if `.doctrack/` exists on the filesystem (glob for `.doctrack/_project.md`). If not found, check `CLAUDE.md` for vault path info.
+1. **Detect vault**: Check if `.doctrack/` exists on the filesystem. If `.doctrack/` exists but `_project.md` doesn't, this is likely a post-restart after first-time dependency setup — the user needs to run `doctrack init` to continue initialization. Tell them: "Your doctrack vault is set up. Say `doctrack init` to continue initialization." If `.doctrack/` doesn't exist at all, check `CLAUDE.md` for vault path info.
 
 2. **Verify MCP connection**: Check if `mcp__obsidian__*` tools are available.
    - If tools are available → try reading `_project.md` via MCP. If it works, proceed to step 3.
@@ -479,8 +479,17 @@ If MCP tools are NOT available:
    }
    ```
    If `.mcp.json` already exists with other servers, merge the `obsidian` entry — don't overwrite existing config.
-5. Tell the user: "I've installed the obsidian skill and configured the MCP server. Please restart Claude Code, then run `doctrack init` again to complete initialization."
-6. **Stop here** — the rest of init requires MCP tools. The user needs to restart Claude Code for the MCP connection to activate.
+5. Also create the `.doctrack/` directory, `.doctrack/.obsidian/`, and `.doctrack/.gitignore` now — so the vault path in `.mcp.json` is valid when the MCP server starts.
+6. **STOP and tell the user to restart.** This is critical — you MUST clearly tell the user:
+
+   > "I've set up the doctrack dependencies:
+   > - Installed the obsidian skill (mcpvault)
+   > - Configured the MCP server in `.mcp.json`
+   > - Created the `.doctrack/` vault directory
+   >
+   > **Please restart Claude Code** (exit and relaunch), then say `doctrack init` again. The MCP server needs a restart to connect to the vault."
+
+   After delivering this message, **do not continue with init**. Do not attempt to write vault notes, create features, or do any documentation work. The MCP connection will not be available until after the restart. End your response here.
 
 If MCP tools ARE available → proceed to step 2.
 
