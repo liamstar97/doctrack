@@ -1,43 +1,49 @@
 # Doctrack
 
-Persistent codebase knowledge for Claude. Doctrack maintains structured documentation that serves as Claude's long-term memory across sessions — read before working, write after changing.
+A codebase knowledge graph for Claude. Doctrack builds and maintains a structured Obsidian vault (`.doctrack/`) that serves as persistent memory across sessions — read before working, write after changing.
 
 ## What it does
 
-Doctrack creates and maintains two documentation trees:
+Doctrack creates a **knowledge graph** in a local Obsidian vault that travels with your code in git:
 
-- **`.claude_docs/`** — Claude's internal knowledge base. Dense, structured, optimized for quickly understanding the codebase in future sessions. Includes feature docs, component docs, a master index, and imported references.
-- **`docs/`** — Human-readable documentation. Polished, visual, with ASCII art diagrams, feature guides, API references, and development instructions.
+- **Features** — What the system does. High-level functional overviews.
+- **Components** — How pieces work internally. Dense implementation details.
+- **Concepts** — Cross-cutting patterns that span multiple features.
+- **Decisions** — Why things are built this way, including rejected alternatives.
+- **Interfaces** — Contracts and boundaries between features or packages.
+- **Guides** — Procedural docs only: build, deploy, test, setup.
+
+Notes are connected via `[[wikilinks]]` and visualized in Obsidian's graph view. Diagrams use Mermaid for token efficiency.
 
 ### Key capabilities
 
-- **Proactive documentation** — Automatically updates docs after code changes without being asked
-- **Project initialization** — Bootstrap full documentation for an existing codebase with `doctrack init`
-- **Monorepo support** — Separate `.claude_docs/` per sub-project with a root coordination index for cross-package dependencies
+- **Proactive documentation** — Automatically updates docs after code changes
+- **Knowledge graph** — Features, components, concepts, decisions, and interfaces form a navigable web of project knowledge
+- **Local vault** — `.doctrack/` lives in your project directory and gets committed to git
+- **Monorepo support** — Per-package documentation with cross-package concepts and interfaces
+- **Decision tracking** — Records why decisions were made AND why alternatives were rejected
 - **Incremental updates** — Surgical doc updates scoped to what actually changed
-- **Cross-references** — Tracks dependencies between features and components so you understand change impact
-- **Pre-existing doc handling** — Imports existing docs into `references/imported/` and moves them to `docs/legacy/` to avoid duplication
-- **Team/worktree support** — Merge-friendly structure for multi-agent workflows
+- **Team support** — Vault shared via git with advisory locking for concurrent access
 
 ## Installation
 
 ### Claude Code (CLI)
 
-Install the skill globally so it's available in all projects:
-
-```bash
-claude install-skill /path/to/doctrack.skill
-```
-
-Or install from this repository directly:
+Install the skill globally:
 
 ```bash
 claude install-skill https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill
 ```
 
+Or from a local file:
+
+```bash
+claude install-skill /path/to/doctrack.skill
+```
+
 ### Project-local install
 
-To install Doctrack for a single project (shared with your team via git):
+Install for a single project (shared with your team via git):
 
 ```bash
 # From your project root
@@ -45,120 +51,98 @@ mkdir -p .claude/skills/doctrack
 curl -L https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill -o .claude/skills/doctrack/SKILL.md
 ```
 
-Then commit `.claude/skills/doctrack/` to your repo. Claude Code will automatically discover and use the skill for anyone working in the project.
+Commit `.claude/skills/doctrack/` to your repo. Claude Code will discover it automatically.
 
-### Claude Desktop
+## Getting started
 
-1. Download `doctrack.skill` from the [latest release](https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest)
-2. Open Claude Desktop
-3. Go to **Settings** > **Skills**
-4. Click **Install Skill** and select the downloaded `.skill` file
+### 1. Initialize your project
 
-## Usage
+```
+> doctrack init
+```
 
-### Initialize a project
+On first run, doctrack will:
 
-Say `doctrack init` to bootstrap documentation for an existing codebase. Doctrack will:
+1. **Install dependencies** — Installs the [obsidian skill](https://github.com/bitbonsai/mcpvault) (MCP server for vault operations) if not present
+2. **Configure MCP** — Creates `.mcp.json` with the mcpvault server pointed at `.doctrack/`
+3. **Create the vault** — Sets up `.doctrack/` with Obsidian config and `.gitignore`
+4. **Analyze your codebase** — Reads config files, maps directory structure, identifies features
+5. **Build the knowledge graph** — Creates feature, component, concept, decision, and interface notes
+6. **Write project files** — `README.md`, `CLAUDE.md`, and procedural guides
 
-1. Analyze the project structure and tech stack
-2. Identify features and their boundaries
-3. Create `.claude_docs/` with feature docs, component docs, and a master index
-4. Create `docs/` with architecture overview, feature guides, API reference, and development instructions
-5. Create README files at every level
-6. Import any pre-existing documentation
+> **Note**: After the first init, you may need to restart Claude Code for the MCP connection to activate. Run `doctrack init` again after restart to complete initialization.
 
-For monorepos, Doctrack detects workspace configurations and creates separate `.claude_docs/` per sub-project with a root coordination file mapping cross-package dependencies.
+### 2. Open in Obsidian (optional)
 
-### After making code changes
+Open `.doctrack/` as a vault in Obsidian to browse the knowledge graph visually. The graph view shows how features, concepts, decisions, and interfaces connect.
 
-Doctrack activates automatically after meaningful code changes. It will:
+### 3. Work normally
 
-- Update the relevant feature and component docs in `.claude_docs/`
-- Update affected human-readable docs in `docs/`
-- Update the master index with new file mappings
-- Keep cross-references current
+After initialization, doctrack activates automatically:
 
-### At the start of a session
+- **Session start** — Reads the vault to orient itself from previous sessions
+- **After code changes** — Updates relevant features, components, and creates decision notes for non-trivial choices
+- **Incremental** — Only touches docs for code that actually changed
 
-When Claude starts working on a project with `.claude_docs/`, it reads the index first to orient itself — picking up context from previous sessions without re-reading the entire codebase.
-
-## Documentation structure
-
-### Standard projects
+## Vault structure
 
 ```text
 project/
-├── .claude_docs/
-│   ├── index.md                    # Master index
-│   ├── references/
-│   │   ├── imported/               # Pre-existing docs
-│   │   └── user/                   # User-provided references
-│   └── {feature}/
-│       ├── feature.md              # Feature overview
-│       └── components/
-│           └── {component}.md      # Component detail
-├── docs/
-│   ├── legacy/                     # Pre-existing docs moved here
-│   ├── architecture.md
-│   ├── {feature}.md
-│   ├── development.md
-│   └── ...
-└── README.md
+├── .doctrack/                      # Obsidian vault (committed to git)
+│   ├── _project.md                 # Project config — read first
+│   ├── features/                   # What the system does
+│   ├── components/                 # How pieces work internally
+│   ├── concepts/                   # Cross-cutting patterns
+│   ├── decisions/                  # Why (and why not)
+│   ├── interfaces/                 # Contracts between features
+│   ├── guides/                     # Procedural docs (build, deploy, test)
+│   ├── specs/                      # OpenAPI, schemas
+│   └── references/                 # Imported pre-existing docs
+├── .mcp.json                       # MCP server config (auto-generated)
+├── README.md
+└── CLAUDE.md                       # Wires up future sessions
 ```
 
 ### Monorepos
 
 ```text
-monorepo/
-├── .claude_docs/
-│   └── index.md                    # Root coordination file
+.doctrack/
+├── _project.md                     # Package map + cross-package deps
 ├── packages/
-│   ├── api/
-│   │   ├── .claude_docs/           # Full doctrack structure
-│   │   ├── docs/
-│   │   └── README.md
-│   ├── web/
-│   │   ├── .claude_docs/
-│   │   ├── docs/
-│   │   └── README.md
-│   └── shared/
-│       ├── .claude_docs/
-│       ├── docs/
-│       └── README.md
-├── docs/                           # Root-level docs
-└── README.md
+│   └── {name}/
+│       ├── _package.md
+│       ├── features/ components/ ...
+│       └── ...
+├── concepts/                       # Monorepo-wide patterns
+├── decisions/                      # Monorepo-wide decisions
+└── interfaces/                     # Cross-package contracts
 ```
+
+## Dependencies
+
+Doctrack depends on the **obsidian skill** ([bitbonsai/mcpvault](https://github.com/bitbonsai/mcpvault)) for vault operations. This is installed automatically during `doctrack init`. It provides:
+
+- **MCP server** — Read/write/search/tag vault notes
+- **Obsidian CLI** — Open vaults, trigger plugins, daily notes
+- **Git sync** — Backup and sync vaults across devices
 
 ## How it works
 
-Doctrack is a Claude Code skill — a markdown instruction file that guides Claude's behavior. When triggered, Claude follows the instructions in `SKILL.md` to read, create, or update documentation.
+Doctrack is two skills working together:
 
-### Triggering
+1. **Doctrack** (this skill) — Defines the knowledge graph schema: what notes to create, what frontmatter, what wikilinks, what tags. It's the brain that decides what to document.
+2. **Obsidian skill** (mcpvault) — Handles the mechanics of reading and writing to the Obsidian vault via MCP tools. It's the hands that do the I/O.
 
-Doctrack triggers in three ways:
+When Claude starts a session, doctrack detects `.doctrack/`, reads the project config, and loads relevant context. When code changes, doctrack decides which notes to update and delegates the writes to the obsidian skill.
 
-1. **Proactively** — After any meaningful code change, Claude updates the relevant docs
-2. **On request** — When you say "doctrack init", "update docs", "document this", etc.
-3. **On session start** — Claude reads `.claude_docs/index.md` to load context from previous sessions
+## For teams
 
-### Internal docs (`.claude_docs/`)
+The `.doctrack/` vault is committed to git, so the knowledge graph is shared with your team. When multiple agents or team members work concurrently:
 
-These are Claude's notes — dense, structured, with YAML frontmatter for machine parsing. They track:
-
-- **Features**: Cohesive units of functionality with purpose, architecture, dependencies, and API surface
-- **Components**: Individual pieces within features — services, middleware, models, utilities
-- **File registry**: Maps every source file to its feature and component
-- **Cross-references**: Which features depend on which, so Claude understands change impact
-
-### Human docs (`docs/`)
-
-These are for developers — polished, visual, with:
-
-- ASCII art diagrams (flow charts, sequence diagrams, state machines)
-- Feature-specific guides explaining mechanisms and patterns
-- API references and OpenAPI specs
-- Build, run, and test instructions
-- Glossary of domain-specific terms
+- Each agent only updates notes for features it modifies
+- Project config uses append-only mode to avoid conflicts
+- Advisory locking via frontmatter prevents concurrent edits to the same note
+- Post-task reconciliation consolidates changes
 
 ## License
 

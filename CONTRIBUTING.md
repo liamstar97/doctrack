@@ -1,114 +1,96 @@
 # Contributing to Doctrack
 
-Thanks for your interest in improving Doctrack! This guide covers how the skill works internally and how to make changes.
+Thanks for your interest in improving Doctrack! This guide covers how the skill works and how to make changes.
 
 ## Repository structure
 
 ```
 doctrack/
 ├── doctrack/
-│   └── SKILL.md              # The skill itself — all instructions live here
+│   └── SKILL.md              # The skill — knowledge graph schema and workflows
 ├── doctrack.skill             # Packaged skill file (zip archive)
-├── doctrack-workspace/        # Test workspace (not included in the skill package)
+├── doctrack-workspace/        # Test workspace (not shipped)
 │   ├── evals/
-│   │   └── evals.json         # Test case definitions and assertions
-│   ├── mock-projects/         # Mock projects for testing
-│   └── iteration-*/           # Test run results by iteration
+│   │   └── evals.json         # Test case definitions
+│   └── iteration-*/           # Test run results
 ├── README.md
 ├── CONTRIBUTING.md
-└── LICENSE
+├── LICENSE
+└── .mcp.json                  # MCP config for testing (not shipped)
 ```
 
-## How the skill works
+## Architecture
 
-Doctrack is a single `SKILL.md` file with YAML frontmatter and markdown instructions. When installed as a Claude Code skill, Claude reads these instructions and follows them to manage documentation.
+Doctrack is a **two-skill system**:
 
-### Key sections of SKILL.md
+1. **Doctrack** (`doctrack/SKILL.md`) — Defines the knowledge graph: what notes to create, what structure, what frontmatter, what wikilinks. This is what you edit.
+2. **Obsidian skill** (`bitbonsai/mcpvault`) — Handles vault I/O via MCP tools. This is an external dependency.
 
-| Section | What it controls |
-|---------|-----------------|
-| **Frontmatter** (`name`, `description`) | When the skill triggers — the description is the primary trigger mechanism |
-| **Directory structure** | Where docs live and how they're organized |
-| **Step-by-step workflow** | The incremental update flow: bootstrap → read → update internal docs → update human docs |
-| **Templates** | Feature doc and component doc templates with frontmatter format |
-| **Project Initialization** | The `doctrack init` workflow: discover → document → index → verify |
-| **Init for monorepos** | Monorepo detection, per-project `.claude_docs/`, root coordination |
-| **Working with teams** | Multi-agent and worktree coordination |
-
-### How triggering works
-
-The `description` field in the frontmatter determines when Claude invokes the skill. Claude sees all installed skill descriptions in its context and decides which to use based on the user's request. The description should be specific enough to trigger reliably but broad enough to cover edge cases.
+Doctrack never calls MCP tools directly in its instructions — it describes **what** to do ("write a feature note", "tag it", "search for existing notes") and the obsidian skill figures out **how**.
 
 ## Making changes
 
 ### 1. Edit SKILL.md
 
-All skill logic lives in `doctrack/SKILL.md`. Edit this file directly. Key things to keep in mind:
+All doctrack logic lives in `doctrack/SKILL.md`. Key sections:
 
-- **Explain the "why"** — Claude follows instructions better when it understands the reasoning, not just the rules. Prefer explaining motivation over rigid directives.
-- **Be specific about output format** — Templates and examples help Claude produce consistent results.
-- **Test with real codebases** — Mock projects are useful for automated testing, but real-world codebases reveal edge cases.
+| Section | What it controls |
+|---------|-----------------|
+| **Knowledge graph structure** | Node types, wikilink patterns |
+| **Tag taxonomy** | How notes are categorized |
+| **Session init** | How Claude orients at session start |
+| **Note templates** | Frontmatter and content structure for each note type |
+| **Project initialization** | The full init workflow |
+| **Version tracking** | Migration paths between versions |
+
+**Tips:**
+- Explain "why" not just "what" — Claude follows instructions better with reasoning
+- Use templates and examples — they produce consistent output
+- Test on real codebases, not just mock projects
 
 ### 2. Test your changes
 
-Doctrack uses the [skill-creator](https://github.com/anthropics/claude-code) eval framework for testing. Test cases live in `doctrack-workspace/evals/evals.json`.
-
-#### Running a test manually
-
-The simplest way to test is to run `doctrack init` on a real project with your modified skill:
+#### Quick test (manual)
 
 ```bash
-# Point Claude at your modified skill
-claude --skill ./doctrack/SKILL.md
+# Install your modified skill
+claude install-skill ./doctrack.skill
 
-# Then in the conversation:
+# In a project directory:
 # "doctrack init"
 ```
 
-#### Running evals with skill-creator
+#### Full eval suite
 
-If you have the skill-creator skill installed, you can run the full eval suite:
+If you have the skill-creator skill, run the eval framework:
 
-1. Define test cases in `doctrack-workspace/evals/evals.json`
-2. Use the skill-creator to spawn test runs with and without the skill
-3. Grade assertions against the outputs
-4. Review results in the eval viewer
+1. Test cases are in `doctrack-workspace/evals/evals.json`
+2. Spawn test runs with and without the skill
+3. Grade assertions against outputs
+4. Review in the eval viewer
 
-See `doctrack-workspace/evals/evals.json` for the existing test cases and assertion format.
+#### Live MCP test
 
-#### Test case structure
+For end-to-end testing with the actual MCP tools:
 
-```json
-{
-  "id": 3,
-  "prompt": "doctrack init",
-  "expected_output": "Description of what should be produced",
-  "assertions": [
-    {"id": "root-index-created", "text": "Root .claude_docs/index.md exists with a Packages table"}
-  ]
-}
-```
+1. Install mcpvault: `npx skills add bitbonsai/mcpvault --yes`
+2. Create a test vault and configure `.mcp.json`
+3. Run `doctrack init` and verify notes appear in the vault
+4. Open the vault in Obsidian to check the graph view
 
-### 3. Repackage the skill
-
-After making changes, repackage the `.skill` file:
+### 3. Repackage
 
 ```bash
-# From the repository root
 zip -r doctrack.skill doctrack/
 ```
 
-Or if you have the skill-creator installed:
+Or with the skill-creator:
 
 ```bash
 claude -p "package the skill at ./doctrack"
 ```
 
-The `.skill` file is just a zip archive containing the `doctrack/` directory.
-
-### 4. Test the packaged skill
-
-Install your packaged skill locally and test it:
+### 4. Test the package
 
 ```bash
 claude install-skill ./doctrack.skill
@@ -116,48 +98,32 @@ claude install-skill ./doctrack.skill
 
 ## Areas for contribution
 
-### Documentation quality
-
-- Improve the templates for feature docs, component docs, or human-readable docs
-- Add support for additional documentation formats (e.g., Mermaid diagrams, MDX)
-- Better handling of specific frameworks or project types
+### Knowledge graph
+- New node types (e.g., "risk" notes for security concerns, "todo" for planned work)
+- Better concept detection during init
+- Smarter decision extraction from code comments and commit messages
 
 ### Monorepo support
-
-- Additional monorepo detection patterns (Bazel, Pants, custom workspace layouts)
+- Additional detection patterns (Bazel, Pants, custom layouts)
 - Better cross-package dependency tracking
-- Handling of polyglot monorepos
 
 ### Language/framework coverage
-
-- Framework-specific documentation patterns (Next.js, Django, Rails, etc.)
+- Framework-specific documentation patterns
 - Language-specific conventions for different tech stacks
-- Better detection of project types and tech stacks
 
-### Init workflow
+### Mermaid diagrams
+- Better diagram templates for specific patterns
+- Auto-generation of dependency graphs from import analysis
 
-- Smarter feature boundary detection
-- Better handling of large codebases (file count limits, prioritization)
-- Improved parallelization strategy for init
-
-### Team workflows
-
-- Better merge conflict resolution strategies
-- Integration with CI/CD for doc validation
-- Automated staleness detection
-
-## Code of conduct
-
-Be kind, constructive, and respectful. We're all here to make better tools.
+### Migration
+- Smoother v1/v2 → v3 migration
+- Migration from other documentation systems (JSDoc, Sphinx, etc.)
 
 ## Submitting changes
 
 1. Fork the repository
-2. Create a branch for your change
-3. Make your edits to `SKILL.md`
+2. Create a branch
+3. Edit `SKILL.md`
 4. Test with at least one real project
 5. Repackage the `.skill` file
-6. Open a PR with:
-   - What you changed and why
-   - How you tested it
-   - Example output showing the improvement (if applicable)
+6. Open a PR with what you changed, why, and how you tested it
