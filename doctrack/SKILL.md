@@ -1,7 +1,7 @@
 ---
 name: doctrack
 metadata:
-  version: "3.1.0"
+  version: "2.0.0"
 description: >
   Maintains persistent codebase knowledge across sessions through a structured knowledge graph
   stored in a local Obsidian vault (.doctrack/). Use this skill whenever you have just made
@@ -155,7 +155,7 @@ Notes namespaced under `projects/{name}/`. A `_doctrack.md` at vault root lists 
 ---
 project: {project-name}
 type: index
-doctrack_version: "3.1.0"
+doctrack_version: "2.0.0"
 monorepo: false
 initialized: YYYY-MM-DD
 last_updated: YYYY-MM-DD
@@ -186,7 +186,7 @@ Tags: `doctrack/type/index`, `doctrack/status/active`, `doctrack/audience/claude
 ---
 feature: feature-name
 type: feature
-doctrack_version: "3.1.0"
+doctrack_version: "2.0.0"
 files:
   - src/path/to/file.ts
 last_updated: YYYY-MM-DD
@@ -422,16 +422,14 @@ Tags: `doctrack/type/guide`, `doctrack/status/active`, `doctrack/audience/human`
 
 ## Version tracking and migration
 
-Current version: `3.1.0`.
+Current version: `2.0.0`.
 
 ### Version history
 
 | Version | Key changes |
 |---------|-------------|
 | **1.x** | Filesystem-only (`.claude_docs/` + `docs/`). Docs as files in repo. |
-| **2.x** | Obsidian vault (external). Tags, wikilinks, MCP tools. |
-| **3.0** | Local vault (`.doctrack/`). Knowledge graph (concepts, decisions, interfaces). Mermaid. Procedural-only guides. |
-| **3.1** | Delegates vault operations to obsidian skill. Cleaner separation of concerns. |
+| **2.0** | Local Obsidian vault (`.doctrack/`). Knowledge graph (concepts, decisions, interfaces). Mermaid diagrams. Depth-first init. Delegates vault I/O to obsidian skill (mcpvault). |
 
 ### Version checking (during session init)
 
@@ -625,7 +623,7 @@ After ALL modules are documented with their components:
 # Doctrack
 
 This project uses a local doctrack vault at `.doctrack/`.
-Project: `{project-name}` | Version: 3.1.0
+Project: `{project-name}` | Version: 2.0.0
 
 ## Session start
 - Run doctrack session init to connect and load context
