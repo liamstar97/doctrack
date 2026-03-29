@@ -27,31 +27,28 @@ Notes are connected via `[[wikilinks]]` and visualized in Obsidian's graph view.
 
 ## Installation
 
-### Claude Code (CLI)
+### Project-local (recommended)
 
-Install the skill globally:
-
-```bash
-claude install-skill https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill
-```
-
-Or from a local file:
-
-```bash
-claude install-skill /path/to/doctrack.skill
-```
-
-### Project-local install
-
-Install for a single project (shared with your team via git):
+Install for a single project. Shared with your team via git:
 
 ```bash
 # From your project root
 mkdir -p .claude/skills/doctrack
-curl -L https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill -o .claude/skills/doctrack/SKILL.md
+curl -L https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill \
+  -o /tmp/doctrack.skill && unzip -o /tmp/doctrack.skill -d .claude/skills/ && rm /tmp/doctrack.skill
 ```
 
-Commit `.claude/skills/doctrack/` to your repo. Claude Code will discover it automatically.
+Commit `.claude/skills/doctrack/` to your repo. Claude Code discovers project-local skills automatically.
+
+### User-global
+
+Install for all your projects:
+
+```bash
+mkdir -p ~/.claude/skills/doctrack
+curl -L https://github.com/liamstar97/claude-code-doctrack-skill/releases/latest/download/doctrack.skill \
+  -o /tmp/doctrack.skill && unzip -o /tmp/doctrack.skill -d ~/.claude/skills/ && rm /tmp/doctrack.skill
+```
 
 ## Getting started
 
