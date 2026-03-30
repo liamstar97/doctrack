@@ -1,0 +1,71 @@
+{
+  "project": "dojo-parent",
+  "date": "2026-03-30",
+  "skill_version": "2.0.0",
+  "skill_commit": "b45f730",
+  "project_stats": {
+    "modules": 18,
+    "source_files": 753,
+    "languages": ["Java", "JavaScript"],
+    "build_system": "Maven",
+    "framework": "Spring Boot 3.2.3 / Spring Cloud"
+  },
+  "vault_stats": {
+    "total_notes": 149,
+    "total_folders": 22,
+    "vault_size_bytes": 649059
+  },
+  "coverage": {
+    "features": 18,
+    "components": 106,
+    "concepts": 8,
+    "decisions": 7,
+    "interfaces": 6,
+    "guides": 1,
+    "references": 1,
+    "specs": 0
+  },
+  "graph_density": {
+    "total_wikilinks": 621,
+    "links_per_note": 4.1,
+    "orphan_notes": 0,
+    "cross_type_links": 205,
+    "cross_type_ratio": 0.33,
+    "internal_link_mermaid_nodes": 105
+  },
+  "components_per_module": {
+    "story-service": {"files": 300, "components": 20},
+    "engine": {"files": 82, "components": 13},
+    "listener-management-service": {"files": 59, "components": 11},
+    "story-model": {"files": 47, "components": 10},
+    "ci-model": {"files": 43, "components": 9},
+    "adaptive-listener": {"files": 34, "components": 8},
+    "ci-logging": {"files": 39, "components": 6},
+    "auth-service": {"files": 34, "components": 6},
+    "custom-actions": {"files": 19, "components": 5},
+    "data-processing-lib": {"files": 24, "components": 5},
+    "ci-reporting": {"files": 17, "components": 4},
+    "ci-common": {"files": 11, "components": 3},
+    "listener-model": {"files": 16, "components": 3},
+    "api-gateway": {"files": 12, "components": 3}
+  },
+  "quality_checks": {
+    "wikilinks_in_mermaid": 0,
+    "hex_colors_in_mermaid": 0,
+    "malformed_paths": 0,
+    "stray_tags": true,
+    "stray_tag_count": 170,
+    "stray_tag_examples": ["dojo/auth", "dojo/mongodb", "dojo/workflow", "encryption", "keycloak", "opensearch", "feign", "hexagonal-architecture"],
+    "init_completed": true,
+    "current_phase": "complete",
+    "monorepo_detected": false,
+    "monorepo_actual": true
+  },
+  "issues": [
+    "monorepo: false in _project.md — Maven multi-module + git submodules not detected",
+    "170+ non-doctrack tags — agents freelancing beyond the taxonomy",
+    "Only 1 reference imported (root README). Module READMEs not imported (tied to monorepo detection miss)",
+    "No specs (OpenAPI) created"
+  ],
+  "notes": "Phase 3 dramatically improved: 8 concepts (was 4), 7 decisions (was 1), 6 interfaces (was 2). All previous quality bugs fixed. Init completed fully with checkpointing. Graph density: 621 wikilinks, 4.1 links/note, 0 orphans, 205 cross-type links. Vault 20% larger than run 1 — deeper content. Missing monorepo detection for Maven/git-submodules caused reference import gap."
+}

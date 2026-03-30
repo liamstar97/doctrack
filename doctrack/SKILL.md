@@ -68,6 +68,8 @@ Every note gets **three required tags** (applied via the obsidian skill's tag ma
 
 Additional: `doctrack/project/{name}` (shared vaults), `doctrack/package/{name}` (monorepos).
 
+**Only use tags from the `doctrack/` namespace.** Do not invent domain-specific tags (e.g., `dojo/auth`, `keycloak`, `mongodb`). The tag taxonomy is intentionally controlled — domain-specific context belongs in note content and frontmatter fields, not in tags. Stray tags clutter the tag panel and create inconsistent filtering.
+
 ## When to use this
 
 **After making code changes**: Update relevant documentation before finishing your response.
@@ -540,7 +542,14 @@ From `package.json` `name` field, directory name, or ask the user.
 
 #### Step 5: Check for monorepo
 
-`workspaces` in `package.json`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`, `nx.json`, `packages/`/`apps/`/`services/` dirs, or multiple `.git` dirs under one parent.
+Check for any of these indicators:
+- **JS/TS**: `workspaces` in `package.json`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`, `nx.json`
+- **Java/Kotlin**: `<modules>` section in `pom.xml` (Maven multi-module), `include` in `settings.gradle` or `settings.gradle.kts` (Gradle multi-project)
+- **Rust**: `[workspace]` in root `Cargo.toml`
+- **Go**: Multiple `go.mod` files in subdirectories
+- **Git**: `.gitmodules` file (git submodules)
+- **General**: `packages/`, `apps/`, `services/`, or `libs/` directories containing multiple sub-projects with their own build configs
+- **Multi-platform**: Multiple independent sub-projects with their own `.git` directories under one parent
 
 ### Init strategy: depth-first, write-as-you-go, resumable
 
@@ -761,10 +770,12 @@ Project: `{project-name}` | Version: 2.0.0
 
 Update `Current phase` to `phase-4` in `_project.md`.
 
-1. **Cross-reference pass** — check wikilinks in Dependencies, Relationships, concept links, interface implementors.
+1. **Cross-reference pass** — check wikilinks in Dependencies, Relationships, concept links, interface implementors. Fill gaps.
 2. **File registry audit** — compare source files against registry. Unmapped files → missed components.
 3. **Component coverage check** — flag modules where file count vs component count suggests gaps.
-4. **Set `Current phase` to `complete`** — remove the Init Progress section from `_project.md` or keep it as a record. The init is done.
+4. **Graph density check** — report: total wikilinks, links per note, orphan notes (should be 0), cross-type links (links between different node types like feature→concept). A healthy vault has 3+ links per note and zero orphans.
+5. **Tag audit** — verify all notes have the required doctrack/ tags (type + status + audience). Flag any non-doctrack tags.
+6. **Set `Current phase` to `complete`** — remove the Init Progress section from `_project.md` or keep it as a record. The init is done.
 
 ### Resuming an interrupted init
 
@@ -791,7 +802,7 @@ This means large projects can be initialized across **multiple sessions** — ea
 
 ### Init for monorepos
 
-**Detection**: `workspaces`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`, `nx.json`, multiple `go.mod`, `packages/`/`apps/`/`services/` dirs, or multiple `.git` dirs under one parent.
+**Detection**: Same indicators as Step 5 of Pre-init — JS workspaces, Maven `<modules>`, Gradle `include`, Cargo `[workspace]`, `.gitmodules`, multiple `go.mod`, or multi-project directory structures.
 
 **Workflow** (same depth-first strategy, scoped to packages):
 1. Lightweight discovery — detect packages, list them, sort by dependency order
