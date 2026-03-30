@@ -86,7 +86,7 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
 
 1. **Detect vault and init state**: Check if `.doctrack/` exists on the filesystem.
    - If `.doctrack/` exists but `_project.md` doesn't → post-restart after dependency setup. Tell the user: "Your doctrack vault is set up. Say `doctrack init` to continue."
-   - If `_project.md` exists and contains an `Init Progress` table with `pending` modules → **interrupted init**. Tell the user: "Doctrack init was interrupted — {N} of {M} modules are documented. Say `doctrack init` to resume where we left off."
+   - If `_project.md` exists and contains a `Current phase` field that is NOT `complete` → **interrupted init**. Check which phase it's in and summarize progress. Tell the user: "Doctrack init was interrupted during {phase}. Say `doctrack init` to resume where we left off."
    - If `.doctrack/` doesn't exist → check `CLAUDE.md` for vault path info.
 
 2. **Verify MCP connection**: Check if `mcp__obsidian__*` tools are available.
@@ -574,14 +574,39 @@ Read **only build config and directory structure** — do not read source files 
 ```markdown
 ## Init Progress
 
+Current phase: **phase-1**
+
+### Modules
+
 | Module | Files | Status | Components |
 |--------|-------|--------|------------|
 | ci-model | 43 | pending | — |
 | ci-common | 11 | pending | — |
 | story-service | 300 | pending | — |
+
+### Phase 3 Checklist
+
+| Category | Target | Created | Status |
+|----------|--------|---------|--------|
+| Concepts | 6-10 | 0 | pending |
+| Decisions | 5-8 | 0 | pending |
+| Interfaces | 4-8 | 0 | pending |
+| References | all docs | 0 | pending |
+| README | — | — | pending |
+| CLAUDE.md | — | — | pending |
+| Guides | — | — | pending |
 ```
 
-This table is the **checkpoint**. After each module completes, update its status to `done` with the component count. On resume, any module still marked `pending` needs documenting.
+This is the **checkpoint**. It tracks progress across ALL phases:
+
+- **`Current phase`** — which phase the init is in (`phase-1`, `phase-2`, `phase-3`, `phase-4`, `complete`). Updated when transitioning between phases.
+- **Modules table** — Phase 2 progress. Update each module to `done` with component count after completing it.
+- **Phase 3 Checklist** — tracks cross-cutting note creation. Update `Created` count and `Status` after writing each category. This prevents Phase 3 from re-running on resume if it already completed.
+
+On resume, read this checkpoint to determine:
+1. Which phase to start from
+2. Which modules still need documenting (Phase 2)
+3. Which Phase 3 categories still need work
 
 ### Phase 2: Deep-dive modules (depth-first, write-as-you-go)
 
@@ -605,8 +630,9 @@ Process modules **one at a time** (or 2-3 independent modules in parallel). For 
 
 **Step D: Tag each note immediately after writing it.** Don't defer tagging to a batch step.
 
-**Step E: Checkpoint.** After finishing a module (feature + all components), update `_project.md`:
-- Set this module's Init Progress status to `done` with component count
+**Step E: Checkpoint.** After finishing a module (feature + all components), update `_project.md` via `patch_note`:
+- Set `Current phase` to `phase-2` (if not already)
+- Set this module's row in the Modules table to `done` with component count
 - Add file registry entries for this module (individual source files)
 - This is the checkpoint — if the session ends here, the next session knows this module is complete
 
@@ -645,9 +671,11 @@ Never write notes with paths containing wildcards, code patterns, or Java packag
 
 ### Phase 3: Build cross-cutting knowledge graph
 
+Update `Current phase` to `phase-3` in `_project.md` before starting.
+
 After all modules are documented (or as many as completed before interruption), this phase is equally important as Phase 2 — it's what turns isolated feature docs into a connected knowledge graph. Don't rush or skip it.
 
-**Write each note immediately** (same write-as-you-go principle as Phase 2).
+**Write each note immediately** (same write-as-you-go principle as Phase 2). **Checkpoint after each sub-phase** by updating the Phase 3 Checklist in `_project.md`.
 
 #### 3a. Concept notes
 
@@ -662,6 +690,8 @@ Common concepts to look for:
 - Data flow patterns (ingestion pipeline, processing pipeline)
 - Operational patterns (monitoring, logging, deployment)
 
+**Checkpoint**: After writing all concept notes, update the Phase 3 Checklist in `_project.md`: set Concepts row to `Created: {count}`, `Status: done`.
+
 #### 3b. Decision notes
 
 Create decision notes for every non-trivial architectural choice visible in the codebase. Look for:
@@ -671,6 +701,8 @@ Create decision notes for every non-trivial architectural choice visible in the 
 - Conventions that aren't obvious (why denormalized data? why this naming pattern?)
 
 **Minimum guideline**: A project with N modules should have roughly N/3 decision notes. An 18-module project should produce 5-8 decisions. Each should include rejected alternatives.
+
+**Checkpoint**: Update Decisions row in Phase 3 Checklist to `done` with count.
 
 #### 3c. Interface notes
 
@@ -683,6 +715,8 @@ Create interface notes for every contract between modules. Look for:
 
 **Minimum guideline**: A project with inter-service communication should have at least one interface per communication channel. An 18-module microservices project should produce 4-8 interface notes.
 
+**Checkpoint**: Update Interfaces row in Phase 3 Checklist to `done` with count.
+
 #### 3d. Import references
 
 Import any pre-existing documentation that wasn't captured in Phase 1:
@@ -694,9 +728,11 @@ Import any pre-existing documentation that wasn't captured in Phase 1:
 
 Write each to `references/imported/{filename}.md` in the vault. Tag with `doctrack/type/reference`.
 
-#### 3e. Finalize project config
+**Checkpoint**: Update References row in Phase 3 Checklist to `done` with count.
 
-Update `_project.md` — remove Init Progress table (or mark all done), finalize feature table and file registry.
+#### 3e. Finalize project files and config
+
+Write filesystem files and finalize the vault:
 5. **Write `README.md`** on filesystem.
 6. **Write `CLAUDE.md`** on filesystem (idempotent — read first, update or append):
 
@@ -723,20 +759,35 @@ Project: `{project-name}` | Version: 2.0.0
 
 ### Phase 4: Verify completeness
 
+Update `Current phase` to `phase-4` in `_project.md`.
+
 1. **Cross-reference pass** — check wikilinks in Dependencies, Relationships, concept links, interface implementors.
 2. **File registry audit** — compare source files against registry. Unmapped files → missed components.
 3. **Component coverage check** — flag modules where file count vs component count suggests gaps.
+4. **Set `Current phase` to `complete`** — remove the Init Progress section from `_project.md` or keep it as a record. The init is done.
 
 ### Resuming an interrupted init
 
-When session init detects an `Init Progress` table in `_project.md` with modules still marked `pending`:
+When session init detects an Init Progress section in `_project.md`, read the `Current phase` and checklist to determine where to resume:
 
-1. Tell the user: "Doctrack init was interrupted. {N} of {M} modules are documented. Want to continue?"
-2. If yes, skip to Phase 2 — process only the `pending` modules.
-3. Also check modules marked `done` for component coverage — if a `done` module has suspiciously few components (e.g., 50 files but 0 components), flag it for re-documentation.
-4. After all modules complete, run Phase 3 (cross-cutting notes) and Phase 4 (verification).
+**If `Current phase` is `phase-1`**: Phase 1 is lightweight — just re-run it.
 
-This means large projects can be initialized across **multiple sessions** — each session documents as many modules as it can, checkpoints progress, and the next session picks up where it left off.
+**If `Current phase` is `phase-2`**:
+1. Tell the user: "Doctrack init was interrupted during module documentation. {N} of {M} modules are done. Want to continue?"
+2. Process only modules with `pending` status.
+3. Check `done` modules for component coverage — flag any with suspiciously low counts (e.g., 50 files but 0 components) for re-documentation.
+4. After all modules complete, proceed to Phase 3.
+
+**If `Current phase` is `phase-3`**:
+1. Tell the user: "Doctrack init was interrupted during knowledge graph creation. Want to continue?"
+2. Read the Phase 3 Checklist. Only run sub-phases still marked `pending` (e.g., if Concepts is `done` but Decisions is `pending`, start from 3b).
+3. After Phase 3 completes, proceed to Phase 4.
+
+**If `Current phase` is `phase-4`**: Re-run verification — it's cheap.
+
+**If `Current phase` is `complete`**: Init is done. Don't re-run unless user explicitly asks to re-initialize.
+
+This means large projects can be initialized across **multiple sessions** — each session makes progress, checkpoints it, and the next session picks up exactly where it left off.
 
 ### Init for monorepos
 
