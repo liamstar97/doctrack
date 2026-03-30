@@ -1,0 +1,59 @@
+{
+  "project": "dojo-parent",
+  "date": "2026-03-30",
+  "skill_version": "2.0.0",
+  "skill_commit": "a602878",
+  "project_stats": {
+    "modules": 18,
+    "source_files": 753,
+    "languages": ["Java", "JavaScript"],
+    "build_system": "Maven",
+    "framework": "Spring Boot 3.2.3 / Spring Cloud"
+  },
+  "vault_stats": {
+    "total_notes": 151,
+    "total_folders": 25,
+    "vault_size_bytes": 540597
+  },
+  "coverage": {
+    "features": 18,
+    "components": 123,
+    "concepts": 4,
+    "decisions": 1,
+    "interfaces": 2,
+    "guides": 0,
+    "references": 0,
+    "specs": 0
+  },
+  "components_per_module": {
+    "story-service": {"files": 300, "components": 25},
+    "engine": {"files": 82, "components": 14},
+    "listener-management-service": {"files": 59, "components": 12},
+    "ci-model": {"files": 43, "components": 11},
+    "ci-logging": {"files": 39, "components": 11},
+    "adaptive-listener": {"files": 34, "components": 9},
+    "story-model": {"files": 47, "components": 8},
+    "auth-service": {"files": 34, "components": 7},
+    "data-processing-lib": {"files": 24, "components": 6},
+    "custom-actions": {"files": 19, "components": 5},
+    "ci-reporting": {"files": 17, "components": 4},
+    "listener-model": {"files": 16, "components": 4},
+    "ci-common": {"files": 11, "components": 4},
+    "api-gateway": {"files": 12, "components": 3}
+  },
+  "quality_checks": {
+    "wikilinks_in_mermaid": 0,
+    "internal_link_class_usage": 29,
+    "stray_tags": ["e1f5fe", "1a73e8", "e8f4fd", "methodname"],
+    "malformed_paths": ["KeycloakController/api/auth/*.md"]
+  },
+  "issues": [
+    "Only 1 decision note — expected 5-8 for 18 modules",
+    "Only 2 interface notes — expected 4-8 for microservices project",
+    "Only 4 concept notes — expected 6-10 for 18 modules",
+    "Zero reference imports — no pre-existing docs imported",
+    "Stray tags from Mermaid hex colors (classDef fill:#e1f5fe)",
+    "Malformed vault path: KeycloakController/api/auth/*.md"
+  ],
+  "notes": "First successful depth-first init. Write-as-you-go produced 123 components across all 18 modules. Phase 3 (cross-cutting) was thin — likely budget-constrained. Mermaid wikilink fix worked (0 violations). internal-link class adopted widely."
+}

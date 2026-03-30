@@ -54,6 +54,8 @@ graph TD
 
 The node label text must match the note filename (without `.md`). Nodes with the `internal-link` class become clickable in Obsidian's reading view. **Never put `[[wikilinks]]` inside Mermaid code blocks** — use wikilinks only in regular markdown content outside of code fences.
 
+**Avoid hex colors in Mermaid.** Do NOT use `classDef` with hex color fills (e.g., `classDef internal fill:#e1f5fe`). Obsidian interprets `#e1f5fe` inside code blocks as an inline hashtag and creates a spurious tag. If you need styling, use named CSS classes without `#` hex values, or skip styling entirely — the diagrams are informational, not decorative.
+
 ## Tag taxonomy
 
 Every note gets **three required tags** (applied via the obsidian skill's tag management):
@@ -556,7 +558,16 @@ Read **only build config and directory structure** — do not read source files 
 
 1. **Read build config** — `pom.xml`, `package.json`, `build.gradle`, `Cargo.toml`, etc. Identify modules/packages and their dependencies.
 2. **List modules** — from build config or top-level directories. For each module, note: name, path, estimated size (file count via glob).
-3. **Import existing docs** — find README, docs/, ADRs. Write to `references/imported/`. Ask user about archiving.
+3. **Import existing docs** — this step is important, don't skip it. Search the project for:
+   - `README.md` at root and in each module
+   - `CLAUDE.md` with project context
+   - `docs/`, `documentation/`, `wiki/` directories
+   - Architecture decision records (`adr/`, `decisions/`)
+   - API specs, design docs, runbooks, `.md` files in non-source directories
+
+   For each found doc, write it to `references/imported/{filename}.md` in the vault with frontmatter including `original_path`. Tag with `doctrack/type/reference`. These are valuable source material — they often contain architectural context, decisions, and domain knowledge not visible in code.
+
+   Ask user about archiving filesystem copies to `.doctrack/archive/`.
 4. **Sort modules by dependency order** — foundation/shared modules first. If unclear, smallest first.
 5. **Write initial `_project.md`** — module list with a `Status` column tracking init progress:
 
@@ -627,16 +638,65 @@ Workflow:
 
 A module with {count} files should produce roughly {count/5 to count/3} components.
 Use internal-link class in Mermaid nodes. Use [[wikilinks]] in markdown content only.
+Do NOT use classDef with hex colors (#e1f5fe etc.) — Obsidian creates spurious tags.
+Vault paths must be clean note paths (e.g., features/auth.md, components/auth/token.md).
+Never write notes with paths containing wildcards, code patterns, or Java package names.
 ```
 
 ### Phase 3: Build cross-cutting knowledge graph
 
-After all modules are documented (or as many as completed before interruption):
+After all modules are documented (or as many as completed before interruption), this phase is equally important as Phase 2 — it's what turns isolated feature docs into a connected knowledge graph. Don't rush or skip it.
 
-1. **Create concept notes** — cross-cutting patterns observed during Phase 2.
-2. **Create decision notes** — architectural choices and rejected alternatives.
-3. **Create interface notes** — contracts between modules.
-4. **Finalize `_project.md`** — remove Init Progress table, finalize feature table and file registry.
+**Write each note immediately** (same write-as-you-go principle as Phase 2).
+
+#### 3a. Concept notes
+
+Create concept notes for every cross-cutting pattern that spans 2+ modules. Review the features you documented — what patterns appeared repeatedly?
+
+**Minimum guideline**: A project with N modules should have roughly N/3 to N/2 concept notes. An 18-module project should produce 6-10 concepts.
+
+Common concepts to look for:
+- Shared architectural patterns (event-driven messaging, circuit breaker, audit logging)
+- Domain models that cross module boundaries
+- Infrastructure patterns (service discovery, config management, security model)
+- Data flow patterns (ingestion pipeline, processing pipeline)
+- Operational patterns (monitoring, logging, deployment)
+
+#### 3b. Decision notes
+
+Create decision notes for every non-trivial architectural choice visible in the codebase. Look for:
+- Technology choices (why this database? why this messaging system? why this framework?)
+- Architectural patterns (why microservices? why event-driven? why this module structure?)
+- Design tradeoffs visible in code comments, README, or existing docs
+- Conventions that aren't obvious (why denormalized data? why this naming pattern?)
+
+**Minimum guideline**: A project with N modules should have roughly N/3 decision notes. An 18-module project should produce 5-8 decisions. Each should include rejected alternatives.
+
+#### 3c. Interface notes
+
+Create interface notes for every contract between modules. Look for:
+- Shared DTOs/models passed between services
+- REST API contracts between services (Feign clients, HTTP endpoints)
+- Message schemas (Kafka topics, event formats)
+- Database document schemas shared across modules
+- Plugin/extension interfaces
+
+**Minimum guideline**: A project with inter-service communication should have at least one interface per communication channel. An 18-module microservices project should produce 4-8 interface notes.
+
+#### 3d. Import references
+
+Import any pre-existing documentation that wasn't captured in Phase 1:
+- README files from modules
+- Existing docs/, wiki/, or documentation directories
+- Architecture decision records (ADRs)
+- API specs, design docs, runbooks
+- CLAUDE.md files with project context
+
+Write each to `references/imported/{filename}.md` in the vault. Tag with `doctrack/type/reference`.
+
+#### 3e. Finalize project config
+
+Update `_project.md` — remove Init Progress table (or mark all done), finalize feature table and file registry.
 5. **Write `README.md`** on filesystem.
 6. **Write `CLAUDE.md`** on filesystem (idempotent — read first, update or append):
 
