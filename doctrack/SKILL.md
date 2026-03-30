@@ -82,7 +82,10 @@ Additional: `doctrack/project/{name}` (shared vaults), `doctrack/package/{name}`
 
 Runs at the start of every Claude session in a project with doctrack. Idempotent.
 
-1. **Detect vault**: Check if `.doctrack/` exists on the filesystem. If `.doctrack/` exists but `_project.md` doesn't, this is likely a post-restart after first-time dependency setup — the user needs to run `doctrack init` to continue initialization. Tell them: "Your doctrack vault is set up. Say `doctrack init` to continue initialization." If `.doctrack/` doesn't exist at all, check `CLAUDE.md` for vault path info.
+1. **Detect vault and init state**: Check if `.doctrack/` exists on the filesystem.
+   - If `.doctrack/` exists but `_project.md` doesn't → post-restart after dependency setup. Tell the user: "Your doctrack vault is set up. Say `doctrack init` to continue."
+   - If `_project.md` exists and contains an `Init Progress` table with `pending` modules → **interrupted init**. Tell the user: "Doctrack init was interrupted — {N} of {M} modules are documented. Say `doctrack init` to resume where we left off."
+   - If `.doctrack/` doesn't exist → check `CLAUDE.md` for vault path info.
 
 2. **Verify MCP connection**: Check if `mcp__obsidian__*` tools are available.
    - If tools are available → try reading `_project.md` via MCP. If it works, proceed to step 3.
@@ -537,33 +540,49 @@ From `package.json` `name` field, directory name, or ask the user.
 
 `workspaces` in `package.json`, `pnpm-workspace.yaml`, `lerna.json`, `turbo.json`, `nx.json`, `packages/`/`apps/`/`services/` dirs, or multiple `.git` dirs under one parent.
 
-### Init strategy: depth-first with batched modules
+### Init strategy: depth-first, write-as-you-go, resumable
 
-Doctrack uses a **depth-first** approach to initialization. Instead of scanning the entire codebase broadly and producing shallow docs, it processes one module at a time in depth — reading all source files, writing the feature note, and creating ALL component notes before moving on.
+Doctrack uses a **depth-first** approach with **immediate writes** and **checkpoint tracking**. This is critical for large projects where sessions may be interrupted by usage limits, timeouts, or restarts.
 
-This matters because breadth-first init on large projects (hundreds of files) produces shallow feature notes with zero components. Depth-first keeps context focused on one module at a time, producing thorough documentation.
+**Core principles:**
+- Process one module at a time in depth, not all modules broadly
+- Write each note to the vault **immediately** after creating it — don't batch writes
+- Checkpoint progress in `_project.md` after each module completes
+- On resume, detect what's already documented and continue where you left off
 
 ### Phase 1: Lightweight discovery
 
-Read **only build config and directory structure** — do not read source files yet. The goal is to build a module list, not to understand the code.
+Read **only build config and directory structure** — do not read source files yet.
 
 1. **Read build config** — `pom.xml`, `package.json`, `build.gradle`, `Cargo.toml`, etc. Identify modules/packages and their dependencies.
 2. **List modules** — from build config or top-level directories. For each module, note: name, path, estimated size (file count via glob).
 3. **Import existing docs** — find README, docs/, ADRs. Write to `references/imported/`. Ask user about archiving.
-4. **Sort modules by dependency order** — process foundation/shared modules first (they'll be referenced by others). If dependency order isn't clear, process smallest modules first to build up context gradually.
-5. **Write initial `_project.md`** — module list, tech stack, basic dependency graph. This will be updated as modules are documented.
+4. **Sort modules by dependency order** — foundation/shared modules first. If unclear, smallest first.
+5. **Write initial `_project.md`** — module list with a `Status` column tracking init progress:
 
-### Phase 2: Deep-dive modules (depth-first)
+```markdown
+## Init Progress
 
-Process modules **one at a time** (or in small batches of 2-3 if they're independent). For each module:
+| Module | Files | Status | Components |
+|--------|-------|--------|------------|
+| ci-model | 43 | pending | — |
+| ci-common | 11 | pending | — |
+| story-service | 300 | pending | — |
+```
 
-**Step A: Read all source files** for this module. Understand the internal structure — what classes exist, how they relate, what patterns are used.
+This table is the **checkpoint**. After each module completes, update its status to `done` with the component count. On resume, any module still marked `pending` needs documenting.
 
-**Step B: Write the feature note** with full architecture, key files, dependencies, and API surface. Use Mermaid diagrams with `internal-link` class for clickable nodes.
+### Phase 2: Deep-dive modules (depth-first, write-as-you-go)
 
-**Step C: Write component notes** for every distinct logical unit. This is the most important step.
+Process modules **one at a time** (or 2-3 independent modules in parallel). For each module, follow this sequence — **writing each note immediately, not batching**:
 
-**Component notes are not optional.** Each controller, service, repository, model, utility, middleware, and config class that has a clear responsibility gets its own component note. Guidelines:
+**Step A: Read source files** for this module in small groups (5-10 files at a time for large modules). As you read each group, identify what component it belongs to.
+
+**Step B: Write the feature note immediately.** Don't wait until you've read all files — write a draft feature note after reading enough to understand the architecture (first 10-15 files). You can patch it later with additional details. Getting the note into the vault early means it survives interruption.
+
+**Step C: Write each component note as you identify it.** This is the critical change from batch writing: as soon as you understand a logical unit (a controller, a service, a model group), write its component note immediately. Then move to the next group of source files. This way, if the session ends mid-module, the components you've already written are preserved.
+
+**Component notes are not optional.** Guidelines:
 
 | Module size | Expected components |
 |------------|-------------------|
@@ -571,51 +590,53 @@ Process modules **one at a time** (or in small batches of 2-3 if they're indepen
 | 3-10 files | 2-5 components |
 | 10-30 files | 5-15 components |
 | 30-100 files | 15-30 components |
-| 100+ files | 30+ components (group related files into logical units) |
+| 100+ files | 30+ components |
 
-Without components, future sessions have to re-read source code — defeating the purpose of doctrack.
+**Step D: Tag each note immediately after writing it.** Don't defer tagging to a batch step.
 
-**Step D: Note cross-cutting observations.** As you deep-dive each module, track patterns you see repeated:
-- Shared patterns → will become concept notes
-- Architectural choices → will become decision notes
-- Contracts between modules → will become interface notes
+**Step E: Checkpoint.** After finishing a module (feature + all components), update `_project.md`:
+- Set this module's Init Progress status to `done` with component count
+- Add file registry entries for this module (individual source files)
+- This is the checkpoint — if the session ends here, the next session knows this module is complete
 
-Don't create these yet — collect them and create them in Phase 3 when you have full context.
+**Step F: Note cross-cutting observations** as you go — shared patterns, architectural choices, contracts. Collect these for Phase 3 but don't write them yet.
 
-**Step E: Update `_project.md`** — add this module's features and file registry entries. List individual source files, not directories.
+**Step G: Move to the next module.**
 
-**Step F: Move to the next module.** Each subagent should fully complete one module (feature + all components + file registry) before the next one starts.
-
-**Parallelization**: Spawn subagents for 2-3 independent modules at a time. Don't spawn all modules in parallel — that recreates the breadth-first problem. Foundation libraries should complete before services that depend on them, so the subagent documenting a service can reference the library's notes.
+**Parallelization**: Spawn subagents for 2-3 independent modules at a time — but each subagent must follow the write-as-you-go pattern internally. Don't spawn all modules in parallel.
 
 Give each subagent this context:
 ```
-You are documenting the "{module-name}" module for doctrack. Go DEEP — read every
-source file, understand the internal architecture, and create thorough documentation.
+You are documenting the "{module-name}" module for doctrack. Go DEEP.
 
 Module path: {path}
 Source files: {count} files
 Module dependencies: {list of other modules this depends on}
 Already-documented modules (for cross-referencing): {list with vault paths}
 
-Write to the vault:
-1. features/{module-name}.md — feature overview with Mermaid architecture diagram
-2. components/{module-name}/{component}.md — ONE PER logical unit (controller, service,
-   repository, model, utility, etc.). A module with {count} files should produce
-   roughly {count/5 to count/3} component notes.
+CRITICAL: Write each note IMMEDIATELY after creating it — do NOT batch writes.
+The session may end at any time due to usage limits. Every note you write to
+the vault before that happens is preserved. Every note you defer is lost.
 
+Workflow:
+1. Read source files in groups of 5-10
+2. Write features/{module-name}.md as soon as you understand the architecture
+3. Write components/{module-name}/{component}.md ONE AT A TIME as you identify each
+4. Tag each note immediately after writing
+5. Return: vault paths created + file registry entries (individual files)
+
+A module with {count} files should produce roughly {count/5 to count/3} components.
 Use internal-link class in Mermaid nodes. Use [[wikilinks]] in markdown content only.
-Tag everything. Return: vault paths created + file registry entries (individual files).
 ```
 
 ### Phase 3: Build cross-cutting knowledge graph
 
-After ALL modules are documented with their components:
+After all modules are documented (or as many as completed before interruption):
 
-1. **Create concept notes** — from the patterns observed during Phase 2 deep-dives. These are the cross-cutting ideas that appeared in multiple modules.
-2. **Create decision notes** — architectural choices and rejected alternatives discovered in code, comments, and existing docs.
-3. **Create interface notes** — contracts between modules (shared DTOs, API boundaries, event schemas).
-4. **Update `_project.md`** — finalize the feature table, file registry, and dependency graph.
+1. **Create concept notes** — cross-cutting patterns observed during Phase 2.
+2. **Create decision notes** — architectural choices and rejected alternatives.
+3. **Create interface notes** — contracts between modules.
+4. **Finalize `_project.md`** — remove Init Progress table, finalize feature table and file registry.
 5. **Write `README.md`** on filesystem.
 6. **Write `CLAUDE.md`** on filesystem (idempotent — read first, update or append):
 
@@ -637,14 +658,25 @@ Project: `{project-name}` | Version: 2.0.0
 - Update _project.md if new features or files added
 ```
 
-7. **Write procedural guides** — `guides/development.md` (build/run/test), `guides/deployment.md` if applicable.
+7. **Write procedural guides** — `guides/development.md`, `guides/deployment.md` if applicable.
 8. **Write specs** — `specs/openapi.md` if REST APIs exist.
 
 ### Phase 4: Verify completeness
 
-1. **Cross-reference pass** — check that feature Dependencies, component Relationships, concept links, and interface implementors/consumers all have correct wikilinks. Fill gaps.
-2. **File registry audit** — compare every source file discovered in Phase 1 against the file registry in `_project.md`. Unmapped files → missed components, shared utilities, or dead code.
-3. **Component coverage check** — for each feature, compare source file count against component count. Flag any module where the ratio suggests missing components (e.g., 50 files but only 2 components).
+1. **Cross-reference pass** — check wikilinks in Dependencies, Relationships, concept links, interface implementors.
+2. **File registry audit** — compare source files against registry. Unmapped files → missed components.
+3. **Component coverage check** — flag modules where file count vs component count suggests gaps.
+
+### Resuming an interrupted init
+
+When session init detects an `Init Progress` table in `_project.md` with modules still marked `pending`:
+
+1. Tell the user: "Doctrack init was interrupted. {N} of {M} modules are documented. Want to continue?"
+2. If yes, skip to Phase 2 — process only the `pending` modules.
+3. Also check modules marked `done` for component coverage — if a `done` module has suspiciously few components (e.g., 50 files but 0 components), flag it for re-documentation.
+4. After all modules complete, run Phase 3 (cross-cutting notes) and Phase 4 (verification).
+
+This means large projects can be initialized across **multiple sessions** — each session documents as many modules as it can, checkpoints progress, and the next session picks up where it left off.
 
 ### Init for monorepos
 
@@ -652,8 +684,8 @@ Project: `{project-name}` | Version: 2.0.0
 
 **Workflow** (same depth-first strategy, scoped to packages):
 1. Lightweight discovery — detect packages, list them, sort by dependency order
-2. Write root `_project.md` with Mermaid cross-package diagram
-3. Deep-dive each package (Phase 2 within `packages/{name}/`) — process 2-3 at a time
+2. Write root `_project.md` with Mermaid cross-package diagram and Init Progress table
+3. Deep-dive each package (Phase 2 within `packages/{name}/`) — process 2-3 at a time, write-as-you-go
 4. After all packages: create monorepo-level concepts, decisions, interfaces
 5. Write root README and CLAUDE.md
 6. Cross-reference pass across packages
