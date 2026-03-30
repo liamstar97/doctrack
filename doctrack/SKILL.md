@@ -773,19 +773,19 @@ When session init detects an Init Progress section in `_project.md`, read the `C
 **If `Current phase` is `phase-1`**: Phase 1 is lightweight — just re-run it.
 
 **If `Current phase` is `phase-2`**:
-1. Tell the user: "Doctrack init was interrupted during module documentation. {N} of {M} modules are done. Want to continue?"
+1. Tell the user: "Resuming doctrack init — {N} of {M} modules documented so far. Continuing with {next pending module}..."
 2. Process only modules with `pending` status.
 3. Check `done` modules for component coverage — flag any with suspiciously low counts (e.g., 50 files but 0 components) for re-documentation.
 4. After all modules complete, proceed to Phase 3.
 
 **If `Current phase` is `phase-3`**:
-1. Tell the user: "Doctrack init was interrupted during knowledge graph creation. Want to continue?"
+1. Tell the user: "Resuming doctrack init — modules are done, continuing with knowledge graph ({list pending categories})..."
 2. Read the Phase 3 Checklist. Only run sub-phases still marked `pending` (e.g., if Concepts is `done` but Decisions is `pending`, start from 3b).
 3. After Phase 3 completes, proceed to Phase 4.
 
-**If `Current phase` is `phase-4`**: Re-run verification — it's cheap.
+**If `Current phase` is `phase-4`**: Tell the user "Resuming — running verification pass." Re-run verification.
 
-**If `Current phase` is `complete`**: Init is done. Don't re-run unless user explicitly asks to re-initialize.
+**If `Current phase` is `complete`**: Init is already done. Tell the user: "This project is already initialized. To re-initialize from scratch, delete `.doctrack/` and run `doctrack init` again."
 
 This means large projects can be initialized across **multiple sessions** — each session makes progress, checkpoints it, and the next session picks up exactly where it left off.
 
