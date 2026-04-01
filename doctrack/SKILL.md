@@ -743,28 +743,76 @@ Write each to `references/imported/{filename}.md` in the vault. Tag with `doctra
 
 Write filesystem files and finalize the vault:
 5. **Write `README.md`** on filesystem.
-6. **Write `CLAUDE.md`** on filesystem (idempotent — read first, update or append):
+6. **Write `CLAUDE.md`** on filesystem (idempotent — read existing first, update the `# Doctrack` section in place or append if not present):
 
 ```markdown
 # Doctrack
 
-This project uses a local doctrack vault at `.doctrack/`.
-Project: `{project-name}` | Version: 2.0.0
+This project maintains a knowledge graph in `.doctrack/` (Obsidian vault).
 
-## Session start
-- Run doctrack session init to connect and load context
-- Read relevant features and components for the area you'll work in
-- Check concepts/ and decisions/ for cross-cutting context
+## BEFORE writing any code
 
-## After code changes
-- Update relevant feature/component notes
-- Create decision notes for non-trivial choices (especially rejections)
-- Update interfaces if contracts changed
-- Update _project.md if new features or files added
+You MUST read relevant documentation before planning or implementing changes:
+
+1. Read `.doctrack/_project.md` for project structure and module map
+2. Search the vault for features related to the code you'll touch:
+   - Use `mcp__obsidian__search_notes` with the module/feature name
+   - Read the matching feature note and its component notes
+3. Check `concepts/` for cross-cutting patterns that may affect your approach
+4. Check `decisions/` for past choices and rejected alternatives — do NOT re-propose
+   approaches that were already considered and rejected
+
+This context prevents duplicate work, respects architectural decisions, and ensures
+your changes align with existing patterns.
+
+## AFTER modifying code files
+
+You MUST update the knowledge graph to reflect your changes:
+
+1. Update the feature note if the feature's architecture, dependencies, or API changed
+2. Update or create component notes for any classes/modules you modified or added
+3. Create a decision note if you made a non-trivial design choice — include
+   alternatives you considered and why you rejected them
+4. Update interfaces if contracts between modules changed
+5. Create a concept note if you introduced a new cross-cutting pattern
+6. Update `_project.md` file registry if you added new source files
+
+Do NOT skip documentation updates. The knowledge graph is how future sessions
+understand this codebase without re-reading source files.
+
+## Vault connection
+
+- Vault path: `.doctrack/`
+- MCP server: configured in `.mcp.json` (obsidian server)
+- If MCP tools are unavailable: read/write `.doctrack/` files directly from filesystem
 ```
 
-7. **Write procedural guides** — `guides/development.md`, `guides/deployment.md` if applicable.
-8. **Write specs** — `specs/openapi.md` if REST APIs exist.
+7. **Write session-start hook** to `.claude/settings.json` (idempotent — read existing, merge, don't overwrite other settings):
+
+Read the project's `.claude/settings.json` if it exists. Add or update the `hooks.SessionStart` entry. Preserve any existing hooks and settings — only add the doctrack hook if it's not already there.
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f .doctrack/_project.md && echo 'Doctrack vault detected at .doctrack/. Read _project.md and relevant feature/component notes before starting work. Check decisions/ for past architectural choices.' || true",
+            "statusMessage": "Checking for doctrack..."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+If `.claude/settings.json` already has other hooks (e.g., linters, formatters), merge the SessionStart hook alongside them — do not replace the file.
+
+8. **Write procedural guides** — `guides/development.md`, `guides/deployment.md` if applicable.
+9. **Write specs** — `specs/openapi.md` if REST APIs exist.
 
 ### Phase 4: Verify completeness
 
