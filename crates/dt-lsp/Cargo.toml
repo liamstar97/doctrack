@@ -1,0 +1,21 @@
+[package]
+name = "dt-lsp"
+description = "LSP server for bidirectional code↔documentation navigation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "doctrack-lsp"
+path = "src/main.rs"
+
+[dependencies]
+dt-index = { path = "../dt-index" }
+dt-watch = { path = "../dt-watch" }
+tower-lsp.workspace = true
+lsp-types.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true

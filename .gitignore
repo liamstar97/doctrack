@@ -1,3 +1,6 @@
+# Rust build artifacts
+target/
+
 # Test workspace (large, contains iteration artifacts)
 doctrack-workspace/
 

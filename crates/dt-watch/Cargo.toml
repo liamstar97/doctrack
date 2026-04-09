@@ -1,0 +1,15 @@
+[package]
+name = "dt-watch"
+description = "File watcher with incremental index updates for doctrack"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+dt-index = { path = "../dt-index" }
+notify.workspace = true
+notify-debouncer-mini.workspace = true
+tokio.workspace = true
+dashmap.workspace = true
+tracing.workspace = true
+anyhow.workspace = true

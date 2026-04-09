@@ -1,0 +1,27 @@
+[package]
+name = "dt-index"
+description = "Bidirectional code↔documentation index for doctrack"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-go.workspace = true
+tree-sitter-java.workspace = true
+tree-sitter-c.workspace = true
+tree-sitter-cpp.workspace = true
+dashmap.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+serde_json.workspace = true
+nucleo-matcher.workspace = true
+tracing.workspace = true
+streaming-iterator = "0.1"
+anyhow.workspace = true
+walkdir.workspace = true
+globset.workspace = true

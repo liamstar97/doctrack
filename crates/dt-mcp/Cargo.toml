@@ -1,0 +1,23 @@
+[package]
+name = "dt-mcp"
+description = "MCP server for doctrack — exposes code↔doc index to Claude Code"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "doctrack-mcp"
+path = "src/main.rs"
+
+[dependencies]
+dt-index = { path = "../dt-index" }
+dt-watch = { path = "../dt-watch" }
+rmcp.workspace = true
+schemars.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+nucleo-matcher.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
