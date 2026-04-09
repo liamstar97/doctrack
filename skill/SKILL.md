@@ -535,17 +535,19 @@ If MCP tools are NOT available:
    ```
    If `.mcp.json` already exists with other servers, merge the entries — don't overwrite existing config. The `doctrack` server is optional — only add it if `doctrack-mcp` is installed (`which doctrack-mcp`). If not installed, skip it and note that the doctrack MCP tools won't be available.
 5. Also create the `.doctrack/` directory, `.doctrack/.obsidian/`, and `.doctrack/.gitignore` now — so the vault path in `.mcp.json` is valid when the MCP server starts.
-6. **Set up doctrack MCP server** (optional but recommended). Check if `doctrack-mcp` is on PATH:
+6. **Set up doctrack MCP server**. Check if `doctrack-mcp` is on PATH:
    ```bash
    which doctrack-mcp
    ```
-   If found:
+   If not found, try to install it automatically:
+   ```bash
+   cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp
+   ```
+   If `cargo` is not available either, tell the user: "Install Rust (https://rustup.rs) and run `cargo install dt-mcp` for code↔doc indexing tools, or skip it — the vault will still work without it." Then remove the `doctrack` entry from `.mcp.json` (only keep `obsidian`).
+
+   Once `doctrack-mcp` is available:
    - The `doctrack` entry in `.mcp.json` (step 4) will work as-is.
    - Install hooks: run `doctrack-mcp --setup-hooks` in the project directory. This adds SessionStart and PostToolUse hooks to `.claude/settings.json` for proactive code↔doc feedback.
-
-   If not found:
-   - Remove the `doctrack` entry from `.mcp.json` (only keep `obsidian`).
-   - Tell the user: "The doctrack MCP server (`doctrack-mcp`) is not installed. Install it with `cargo install dt-mcp` for code↔doc indexing, or skip it — the vault will still work without it."
 
 7. **STOP and tell the user to restart.** This is critical — you MUST clearly tell the user:
 
