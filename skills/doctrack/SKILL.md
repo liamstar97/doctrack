@@ -413,6 +413,16 @@ When the `doctrack` MCP server is available (tools prefixed `mcp__doctrack__`), 
 
 3. **After modifying code**: Call `check_impact` with the changed file path to see which vault notes reference it. Update those notes if the changes affect documented behavior, renamed symbols, or moved files.
 
+### Refreshing stale documentation
+
+Call `refresh_docs` to get a prioritized plan of what needs updating. It compares note `last_updated` timestamps against code file modification times, detects new/missing symbols, and finds broken references. Use it:
+
+- **At session start** (after reading `_project.md`) to see what's drifted since last session
+- **After a batch of code changes** to identify all impacted docs at once
+- **After updating docs** to verify nothing remains stale (idempotent — returns empty when everything is current)
+
+The tool returns a prioritized list (HIGH/MEDIUM/LOW) with specific reasons per note. Work through them in priority order — HIGH means broken refs or code changed significantly, LOW means minor symbol drift.
+
 ### For vault health
 
 - Call `coverage_report` during Phase 4 verification to see overall vault health, undocumented code files, and stale reference counts.
