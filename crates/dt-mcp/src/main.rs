@@ -281,10 +281,9 @@ fn setup_hooks() -> Result<()> {
         .entry("hooks")
         .or_insert_with(|| serde_json::json!({}));
 
-    // Find the doctrack-mcp binary path for the hook commands
-    let bin_path = std::env::current_exe()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| "doctrack-mcp".to_string());
+    // Use the binary name on PATH, not an absolute path — absolute paths
+    // break across users and machines when hooks are committed to git.
+    let bin_path = "doctrack-mcp";
 
     // SessionStart hook — coverage summary
     let session_start_hook = serde_json::json!({
