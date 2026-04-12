@@ -103,11 +103,12 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
        "mcpServers": {
          "obsidian": {
            "command": "npx",
-           "args": ["@bitbonsai/mcpvault@latest", "{absolute-path-to-project}/.doctrack"]
+           "args": ["@bitbonsai/mcpvault@latest", ".doctrack"]
          }
        }
      }
      ```
+     **Use relative paths** (`.doctrack` not absolute) so the config works across clones and users. Claude Code sets the working directory to the project root when spawning MCP servers.
      Tell the user: "I've configured the MCP server in `.mcp.json`. Please restart Claude Code for the connection to activate." Then proceed with what you can do without MCP (read `.doctrack/` files directly from the filesystem using the Read tool as a fallback).
 
 3. **Read project config**: Load `_project.md` from the vault. Check `doctrack_version` (see Version tracking).
@@ -606,17 +607,16 @@ If MCP tools are NOT available:
      "mcpServers": {
        "obsidian": {
          "command": "npx",
-         "args": ["@bitbonsai/mcpvault@latest", "{absolute-path-to-project}/.doctrack"]
+         "args": ["@bitbonsai/mcpvault@latest", ".doctrack"]
        },
        "doctrack": {
-         "command": "doctrack-mcp",
-         "env": {
-           "DOCTRACK_ROOT": "{absolute-path-to-project}"
-         }
+         "command": "doctrack-mcp"
        }
      }
    }
    ```
+   **Always use relative paths** — `.doctrack` not absolute. Claude Code sets the working directory to the project root when spawning MCP servers. `doctrack-mcp` defaults to the current directory when `DOCTRACK_ROOT` is not set. This ensures the config works across clones, worktrees, and users.
+
    If `.mcp.json` already exists with other servers, merge the entries — don't overwrite existing config. The `doctrack` server is optional — only add it if `doctrack-mcp` is installed (`which doctrack-mcp`). If not installed, skip it and note that the doctrack MCP tools won't be available.
 5. Also create the `.doctrack/` directory, `.doctrack/.obsidian/`, and `.doctrack/.gitignore` now — so the vault path in `.mcp.json` is valid when the MCP server starts.
 6. **Set up doctrack MCP server**. Check if `doctrack-mcp` is on PATH:
