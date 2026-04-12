@@ -112,7 +112,13 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
 
 3. **Read project config**: Load `_project.md` from the vault. Check `doctrack_version` (see Version tracking).
 
-4. **Orient**: Use vault stats to see recently modified notes. Load only docs relevant to the current task — don't read the whole vault.
+4. **Check doctrack-mcp version** (if installed): Run `doctrack-mcp --version`. The output format is `doctrack-mcp {version} ({git-hash})`. Compare the version against `0.1.0` (minimum required for this skill version).
+   - If not installed and `cargo` is available: suggest `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp`
+   - If installed but version is older than required: tell the user "Your doctrack-mcp may be outdated. Run `doctrack-mcp --update` to get the latest."
+   - If the command isn't found and `cargo` isn't available: skip silently, the vault works without the MCP server.
+   - If up to date: proceed silently.
+
+5. **Orient**: Use vault stats to see recently modified notes. Load only docs relevant to the current task — don't read the whole vault.
 
 ## Doctrack refresh
 
