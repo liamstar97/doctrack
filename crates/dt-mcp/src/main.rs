@@ -297,13 +297,14 @@ fn setup_hooks() -> Result<()> {
         }]
     });
 
-    // PostToolUse hook — check impact after code/doc writes
+    // PostToolUse hook — validate notes after obsidian writes
+    // Hook receives JSON on stdin with tool_input.path
     let post_tool_hook = serde_json::json!({
         "matcher": "mcp__obsidian__write_note|mcp__obsidian__patch_note",
         "hooks": [{
             "type": "command",
             "command": format!(
-                "if [ -d .doctrack ]; then DOCTRACK_ROOT=\"$(pwd)\" {bin_path} --validate-note \"$TOOL_INPUT_PATH\" 2>/dev/null; fi"
+                "NOTE=$(cat | jq -r '.tool_input.path // empty'); if [ -n \"$NOTE\" ] && [ -d .doctrack ]; then DOCTRACK_ROOT=\"$(pwd)\" {bin_path} --validate-note \"$NOTE\" 2>/dev/null; fi"
             ),
             "statusMessage": "Doctrack: validating note..."
         }]
