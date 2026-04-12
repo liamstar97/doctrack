@@ -21,6 +21,15 @@ async fn main() -> Result<()> {
         return run_check(&args[2]);
     }
 
+    if args.len() >= 2 && matches!(args[1].as_str(), "--version" | "-V") {
+        println!(
+            "doctrack-lsp {} ({})",
+            env!("CARGO_PKG_VERSION"),
+            env!("GIT_HASH")
+        );
+        return Ok(());
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_writer(std::io::stderr)

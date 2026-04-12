@@ -26,6 +26,11 @@ async fn main() -> Result<()> {
         match args[1].as_str() {
             "--coverage" => return run_coverage(),
             "--setup-hooks" => return setup_hooks(),
+            "--version" | "-V" => {
+                print_version();
+                return Ok(());
+            }
+            "--update" => return run_update(),
             _ => {}
         }
     }
@@ -211,6 +216,46 @@ fn run_coverage() -> Result<()> {
         "Doctrack: {} notes, {} code files, {} links, {}% coverage",
         total_notes, total_code, total_links, coverage
     );
+
+    Ok(())
+}
+
+fn print_version() {
+    println!(
+        "doctrack-mcp {} ({})",
+        env!("CARGO_PKG_VERSION"),
+        env!("GIT_HASH")
+    );
+}
+
+/// CLI: --update
+/// Reinstall both doctrack binaries from GitHub main.
+fn run_update() -> Result<()> {
+    print_version();
+    println!("Updating from GitHub...\n");
+
+    let repo = "https://github.com/liamstar97/doctrack.git";
+
+    println!("Installing dt-mcp...");
+    let mcp_status = std::process::Command::new("cargo")
+        .args(["install", "--git", repo, "dt-mcp", "--force"])
+        .status();
+
+    println!("\nInstalling dt-lsp...");
+    let lsp_status = std::process::Command::new("cargo")
+        .args(["install", "--git", repo, "dt-lsp", "--force"])
+        .status();
+
+    println!();
+    match (mcp_status, lsp_status) {
+        (Ok(m), Ok(l)) if m.success() && l.success() => {
+            println!("Both binaries updated successfully.");
+            println!("Restart Claude Code and your editor for changes to take effect.");
+        }
+        _ => {
+            println!("Some installations may have failed — check output above.");
+        }
+    }
 
     Ok(())
 }
