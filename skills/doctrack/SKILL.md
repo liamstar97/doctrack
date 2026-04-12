@@ -112,10 +112,14 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
 
 3. **Read project config**: Load `_project.md` from the vault. Check `doctrack_version` (see Version tracking).
 
-4. **Check doctrack-mcp version** (if installed): Run `doctrack-mcp --version`. The output format is `doctrack-mcp {version} ({git-hash})`. Compare the version against `0.1.0` (minimum required for this skill version).
-   - If not installed and `cargo` is available: run `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp` and tell the user to restart Claude Code for the MCP server to connect.
-   - If installed but version is older than required: run `doctrack-mcp --update` to update both binaries. Tell the user "Updated doctrack-mcp — restart Claude Code for the new version to take effect."
-   - If the command isn't found and `cargo` isn't available: skip silently, the vault works without the MCP server.
+4. **Check doctrack-mcp version** (if installed): Run this command (with a timeout to handle old binaries that don't support --version):
+   ```bash
+   timeout 2 doctrack-mcp --version 2>/dev/null || echo "unknown"
+   ```
+   Expected output format: `doctrack-mcp {version} ({git-hash})`. Compare the version against `0.1.0` (minimum required for this skill version).
+   - If not found (`command not found`) and `cargo` is available: run `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp` and tell the user to restart Claude Code for the MCP server to connect.
+   - If output is `unknown` or version is older than required: run `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp --force` to update. Tell the user "Updated doctrack-mcp — restart Claude Code for the new version to take effect."
+   - If `cargo` isn't available: skip silently, the vault works without the MCP server.
    - If up to date: proceed silently.
 
 5. **Orient**: Use vault stats to see recently modified notes. Load only docs relevant to the current task — don't read the whole vault.
