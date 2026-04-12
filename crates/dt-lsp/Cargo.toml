@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 dt-index = { path = "../dt-index" }
 dt-watch = { path = "../dt-watch" }
+arc-swap = "1"
 tower-lsp.workspace = true
 lsp-types.workspace = true
 tokio.workspace = true
