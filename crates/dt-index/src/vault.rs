@@ -47,8 +47,11 @@ pub struct Frontmatter {
     pub tags: Vec<String>,
     #[serde(rename = "file-registry")]
     pub file_registry: Vec<String>,
+    pub files: Vec<String>,
     pub components: Vec<String>,
     pub related: Vec<String>,
+    pub last_updated: Option<String>,
+    pub status: Option<String>,
 }
 
 /// Parse all markdown notes in a vault directory.
@@ -142,8 +145,8 @@ fn extract_h1(body: &str) -> Option<String> {
 fn extract_file_refs(fm: &Frontmatter, body: &str) -> Vec<FileRef> {
     let mut refs = Vec::new();
 
-    // From frontmatter file-registry — trusted, always include
-    for entry in &fm.file_registry {
+    // From frontmatter file-registry and files — trusted, always include
+    for entry in fm.file_registry.iter().chain(fm.files.iter()) {
         if let Some((path, line)) = parse_file_ref(entry) {
             let is_bare = !path.to_string_lossy().contains('/');
             refs.push(FileRef {

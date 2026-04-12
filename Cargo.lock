@@ -253,6 +253,7 @@ name = "dt-mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "dt-index",
  "dt-watch",
  "nucleo-matcher",

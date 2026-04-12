@@ -526,6 +526,190 @@ impl DoctrackMcp {
         report
     }
 
+    /// Generate a refresh plan for stale documentation.
+    #[tool(name = "refresh_docs", description = "Scan the vault and generate a prioritized plan of documentation that needs updating. Compares note last_updated timestamps against code file modification times, detects symbol drift (renamed/added/removed), and identifies undocumented code. Returns an actionable list — use it to drive targeted doc updates. Idempotent: run again after updating to verify nothing remains stale.")]
+    async fn refresh_docs(&self) -> String {
+        #[derive(Debug)]
+        struct StaleNote {
+            note_path: String,
+            note_title: String,
+            note_type: String,
+            reasons: Vec<String>,
+            priority: u32, // higher = more urgent
+        }
+
+        let mut stale_notes: Vec<StaleNote> = Vec::new();
+        let mut undocumented_files: Vec<String> = Vec::new();
+
+        // Phase 1: Check each vault note for staleness
+        for entry in self.index.vault_notes.iter() {
+            let note = entry.value();
+            let mut reasons = Vec::new();
+            let mut priority = 0u32;
+
+            let note_rel = note.path.strip_prefix(&self.index.vault_root)
+                .unwrap_or(&note.path)
+                .display()
+                .to_string();
+
+            // Parse note's last_updated date
+            let note_updated = note.frontmatter.last_updated.as_ref()
+                .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
+
+            // Check each referenced code file
+            for file_ref in &note.file_refs {
+                let resolved = self.index.resolve_file_ref(file_ref);
+
+                if resolved.is_empty() {
+                    reasons.push(format!(
+                        "Broken ref: `{}` not found",
+                        file_ref.path.display()
+                    ));
+                    priority += 3;
+                    continue;
+                }
+
+                for abs_path in &resolved {
+                    // Compare file mtime against note last_updated
+                    if let (Some(note_date), Ok(metadata)) = (note_updated, std::fs::metadata(abs_path)) {
+                        if let Ok(modified) = metadata.modified() {
+                            let file_date = chrono::DateTime::<chrono::Utc>::from(modified)
+                                .date_naive();
+                            if file_date > note_date {
+                                let days_stale = (file_date - note_date).num_days();
+                                let rel = abs_path.strip_prefix(&self.index.root)
+                                    .unwrap_or(abs_path)
+                                    .display();
+                                reasons.push(format!(
+                                    "Code newer: `{}` modified {} day(s) after note was last updated",
+                                    rel, days_stale
+                                ));
+                                priority += if days_stale > 30 { 3 } else if days_stale > 7 { 2 } else { 1 };
+                            }
+                        }
+                    }
+
+                    // Check for symbol drift — symbols in code that the note might be missing
+                    if let Some(symbols) = self.index.code_symbols.get(abs_path) {
+                        let body_lower = note.body.to_lowercase();
+                        let mut missing_symbols = Vec::new();
+                        for sym in symbols.value() {
+                            // If a symbol exists in the code but isn't mentioned in the note body
+                            if !body_lower.contains(&sym.name.to_lowercase()) {
+                                missing_symbols.push(format!("`{}`", sym.name));
+                            }
+                        }
+                        if !missing_symbols.is_empty() && missing_symbols.len() <= 10 {
+                            let rel = abs_path.strip_prefix(&self.index.root)
+                                .unwrap_or(abs_path)
+                                .display();
+                            reasons.push(format!(
+                                "Undocumented symbols in `{}`: {}",
+                                rel,
+                                missing_symbols.join(", ")
+                            ));
+                            priority += 1;
+                        }
+                    }
+                }
+            }
+
+            // Check for broken wikilinks
+            for link in &note.wikilinks {
+                let linked_path = self.index.vault_root.join(format!("{link}.md"));
+                if !linked_path.exists() {
+                    let found = self.index.vault_notes.iter().any(|e| {
+                        e.value().title.eq_ignore_ascii_case(link)
+                    });
+                    if !found {
+                        reasons.push(format!("Broken wikilink: [[{link}]]"));
+                        priority += 1;
+                    }
+                }
+            }
+
+            // Check if note has no last_updated at all
+            if note.frontmatter.last_updated.is_none() && !note.file_refs.is_empty() {
+                reasons.push("Missing `last_updated` frontmatter — can't track staleness".to_string());
+                priority += 1;
+            }
+
+            if !reasons.is_empty() {
+                stale_notes.push(StaleNote {
+                    note_path: note_rel,
+                    note_title: note.title.clone(),
+                    note_type: note.note_type.clone(),
+                    reasons,
+                    priority,
+                });
+            }
+        }
+
+        // Phase 2: Find code files with no documentation at all
+        for entry in self.index.code_symbols.iter() {
+            let file = entry.key();
+            let has_docs = entry.value().iter().any(|sym| {
+                !self.index.docs_for_symbol(file, &sym.name).is_empty()
+            });
+            if !has_docs {
+                let rel = file.strip_prefix(&self.index.root)
+                    .unwrap_or(file)
+                    .display()
+                    .to_string();
+                undocumented_files.push(rel);
+            }
+        }
+        undocumented_files.sort();
+
+        // Build the report
+        stale_notes.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        if stale_notes.is_empty() && undocumented_files.is_empty() {
+            return "All documentation is up to date. No refresh needed.".to_string();
+        }
+
+        let mut report = String::from("## Documentation Refresh Plan\n\n");
+
+        if !stale_notes.is_empty() {
+            report.push_str(&format!("### Stale notes ({} need updating)\n\n", stale_notes.len()));
+
+            for (i, note) in stale_notes.iter().enumerate() {
+                let priority_label = match note.priority {
+                    0..=2 => "LOW",
+                    3..=4 => "MEDIUM",
+                    _ => "HIGH",
+                };
+                report.push_str(&format!(
+                    "**{}. {} [{}]** — `{}` (priority: {})\n",
+                    i + 1, note.note_title, note.note_type, note.note_path, priority_label
+                ));
+                for reason in &note.reasons {
+                    report.push_str(&format!("   - {reason}\n"));
+                }
+                report.push('\n');
+            }
+        }
+
+        if !undocumented_files.is_empty() {
+            report.push_str(&format!(
+                "### Undocumented code files ({})\n\n",
+                undocumented_files.len()
+            ));
+            for (i, file) in undocumented_files.iter().take(20).enumerate() {
+                report.push_str(&format!("{}. `{}`\n", i + 1, file));
+            }
+            if undocumented_files.len() > 20 {
+                report.push_str(&format!("... and {} more\n", undocumented_files.len() - 20));
+            }
+        }
+
+        report.push_str(&format!(
+            "\n---\n*Run `refresh_docs` again after updating to verify all issues are resolved.*"
+        ));
+
+        report
+    }
+
     /// Search the index for notes, symbols, or files matching a query.
     #[tool(name = "search_index", description = "Fuzzy search across vault notes, code symbols, and file paths. Use when you need to find related documentation or code by keyword.")]
     async fn search_index(&self, Parameters(input): Parameters<SearchIndexInput>) -> String {
