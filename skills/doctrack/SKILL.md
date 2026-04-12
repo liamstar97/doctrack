@@ -113,8 +113,8 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
 3. **Read project config**: Load `_project.md` from the vault. Check `doctrack_version` (see Version tracking).
 
 4. **Check doctrack-mcp version** (if installed): Run `doctrack-mcp --version`. The output format is `doctrack-mcp {version} ({git-hash})`. Compare the version against `0.1.0` (minimum required for this skill version).
-   - If not installed and `cargo` is available: suggest `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp`
-   - If installed but version is older than required: tell the user "Your doctrack-mcp may be outdated. Run `doctrack-mcp --update` to get the latest."
+   - If not installed and `cargo` is available: run `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp` and tell the user to restart Claude Code for the MCP server to connect.
+   - If installed but version is older than required: run `doctrack-mcp --update` to update both binaries. Tell the user "Updated doctrack-mcp — restart Claude Code for the new version to take effect."
    - If the command isn't found and `cargo` isn't available: skip silently, the vault works without the MCP server.
    - If up to date: proceed silently.
 
