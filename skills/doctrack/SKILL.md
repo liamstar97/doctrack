@@ -405,13 +405,30 @@ Tags: `doctrack/type/guide`, `doctrack/status/active`, `doctrack/audience/human`
 
 When the `doctrack` MCP server is available (tools prefixed `mcp__doctrack__`), use it to write better documentation and keep the vault healthy. The MCP server maintains a bidirectional index between code symbols and vault notes.
 
+### Available tools
+
+| Tool | Input | Purpose |
+|------|-------|---------|
+| `validate_note` | `note` (vault-relative path) | Check a note for stale refs, broken wikilinks, ambiguous references |
+| `docs_for_file` | `file` (project-relative path) | Find all vault notes that document a code file |
+| `resolve_symbol` | `name` (e.g. `SessionManager`) | Look up where a symbol is defined and which notes reference it |
+| `check_impact` | `file` (project-relative path) | After code changes, find which vault notes may need updating |
+| `refresh_docs` | *(none)* | Scan vault and generate prioritized plan of stale documentation |
+| `coverage_report` | *(none)* | Vault health — note count, code files, link coverage, undocumented files |
+| `stale_report` | *(none)* | Full list of broken file refs and wikilinks across the vault |
+| `search_index` | `query` (keywords) | Fuzzy search across note titles, summaries, tags, and code symbols |
+
+### During code changes
+
+1. **Before modifying code**: Call `docs_for_file` with the file you're about to change. Read the linked vault notes to understand the documented architecture and contracts before making changes.
+
+2. **After modifying code**: Call `check_impact` with the changed file path to see which vault notes reference it. Update those notes if the changes affect documented behavior, renamed symbols, or moved files.
+
 ### During documentation writing
 
 1. **Before writing a note**: Call `resolve_symbol` to get accurate file paths and line numbers for symbols you're documenting. Use the resolved paths in `files:` frontmatter and `file-registry` entries — don't guess or abbreviate paths.
 
 2. **After writing or updating a note**: Call `validate_note` with the note path (relative to vault root, e.g. `features/auth.md`). Fix any stale references, ambiguous file refs, or broken wikilinks it reports before moving on.
-
-3. **After modifying code**: Call `check_impact` with the changed file path to see which vault notes reference it. Update those notes if the changes affect documented behavior, renamed symbols, or moved files.
 
 ### Refreshing stale documentation
 
