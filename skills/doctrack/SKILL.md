@@ -12,8 +12,9 @@ description: >
   used proactively after any significant code modification — don't wait for the user to ask.
   If you changed code, update the docs. Think of it as your long-term memory system: read
   before working, write after changing. Also use this when a user says "doctrack init",
-  "initialize docs", "document this project", or wants to bootstrap documentation for a
-  codebase that has no .doctrack/ vault yet.
+  "doctrack refresh", "refresh docs", "update docs", "sync docs", "initialize docs",
+  "document this project", or wants to bootstrap documentation for a codebase that has
+  no .doctrack/ vault yet.
 ---
 
 # Doctrack — Codebase Knowledge Graph
@@ -80,6 +81,8 @@ Additional: `doctrack/project/{name}` (shared vaults), `doctrack/package/{name}`
 
 **To initialize a project**: When the user says "doctrack init".
 
+**To refresh stale docs**: When the user says "doctrack refresh", "refresh docs", "update docs", or "sync docs".
+
 **Do NOT use for**: Trivial formatting changes, comment-only edits, or read-only exploration.
 
 ## Session init (every session)
@@ -110,6 +113,50 @@ Runs at the start of every Claude session in a project with doctrack. Idempotent
 3. **Read project config**: Load `_project.md` from the vault. Check `doctrack_version` (see Version tracking).
 
 4. **Orient**: Use vault stats to see recently modified notes. Load only docs relevant to the current task — don't read the whole vault.
+
+## Doctrack refresh
+
+When the user says "doctrack refresh", "refresh docs", "update docs", or "sync docs" — or when you detect that code has changed and docs may be stale. **Requires the doctrack MCP server** (`mcp__doctrack__*` tools).
+
+If doctrack MCP tools are not available, tell the user: "The doctrack MCP server is needed for refresh. Run `cargo install --git https://github.com/liamstar97/doctrack.git dt-mcp` and restart Claude Code."
+
+### Refresh flow
+
+1. **Get the refresh plan**: Call `refresh_docs`. This returns a prioritized list of stale notes with specific reasons (code newer than doc, missing symbols, broken refs).
+
+2. **If nothing is stale**: Report "All documentation is up to date" and stop.
+
+3. **Work through stale notes in priority order** (HIGH → MEDIUM → LOW):
+
+   For each stale note:
+   a. **Read the note** via obsidian MCP to understand its current content.
+   b. **Read the changed code files** listed in the refresh plan reasons. Focus on the symbols and sections that changed.
+   c. **Update the note** via obsidian MCP (`patch_note` for surgical edits, `write_note` for significant rewrites):
+      - Fix broken file references with correct paths (use `resolve_symbol` if needed)
+      - Add documentation for new symbols the note is missing
+      - Update descriptions for renamed or modified symbols
+      - Fix broken wikilinks
+      - Update `last_updated` frontmatter to today's date
+   d. **Validate the note**: Call `validate_note` on the updated note. Fix any remaining issues.
+
+4. **Handle undocumented code files**: If `refresh_docs` reported undocumented files:
+   - For files that belong to an existing feature, create component notes
+   - For files that represent new features, create feature notes
+   - Follow the same write-as-you-go pattern from init (write immediately, tag, link)
+
+5. **Verify**: Call `refresh_docs` again. It should return "All documentation is up to date." If issues remain, continue from step 3.
+
+6. **Report**: Tell the user what was updated — e.g., "Updated 5 notes, created 2 new component notes, fixed 3 broken references."
+
+### Incremental refresh (after specific code changes)
+
+When you've just modified code files (not a full refresh), use the targeted workflow instead:
+
+1. Call `check_impact` for each file you changed
+2. Read and update only the impacted notes
+3. Call `validate_note` on each updated note
+
+This is faster than a full `refresh_docs` when you know exactly what changed.
 
 ## Vault layout
 
