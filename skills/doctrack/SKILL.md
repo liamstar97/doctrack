@@ -706,7 +706,7 @@ Read **only build config and directory structure** — do not read source files 
    - Architecture decision records (`adr/`, `decisions/`)
    - API specs, design docs, runbooks, `.md` files in non-source directories
 
-   For each found doc, write it to `references/imported/{filename}.md` in the vault with frontmatter including `original_path`. Tag with `doctrack/type/reference`. These are valuable source material — they often contain architectural context, decisions, and domain knowledge not visible in code.
+   For each found doc, **copy the full content verbatim** into `references/imported/{filename}.md` in the vault. Add frontmatter with `original_path` and `type: reference` at the top, but preserve the entire original document body below the frontmatter — do NOT summarize, truncate, or paraphrase. Tag with `doctrack/type/reference`. These are valuable source material — they often contain architectural context, decisions, and domain knowledge not visible in code.
 
    Ask user about archiving filesystem copies to `.doctrack/archive/`.
 4. **Sort modules by dependency order** — foundation/shared modules first. If unclear, smallest first.
@@ -867,7 +867,7 @@ Import any pre-existing documentation that wasn't captured in Phase 1:
 - API specs, design docs, runbooks
 - CLAUDE.md files with project context
 
-Write each to `references/imported/{filename}.md` in the vault. Tag with `doctrack/type/reference`.
+**Copy the full content verbatim** into `references/imported/{filename}.md` in the vault — add frontmatter but do NOT summarize, truncate, or paraphrase the original content. Tag with `doctrack/type/reference`.
 
 **Checkpoint**: Update References row in Phase 3 Checklist to `done` with count.
 

@@ -661,10 +661,97 @@ impl DoctrackMcp {
         }
         undocumented_files.sort();
 
+        // Phase 3: Find new docs/READMEs not yet imported into the vault
+        let mut new_docs: Vec<String> = Vec::new();
+        {
+            // Collect all original_path and file refs from vault notes to know what's imported
+            let mut imported_paths = std::collections::HashSet::new();
+            for entry in self.index.vault_notes.iter() {
+                let note = entry.value();
+                // Check frontmatter for original_path or files
+                for file_ref in &note.file_refs {
+                    imported_paths.insert(file_ref.path.to_string_lossy().to_string());
+                }
+                // Also check body for references to doc files
+                for line in note.body.lines() {
+                    let trimmed = line.trim();
+                    if let Some(path) = trimmed.strip_prefix("original_path:") {
+                        imported_paths.insert(path.trim().to_string());
+                    }
+                }
+            }
+
+            let skip_dirs = [
+                "target", "node_modules", ".git", ".doctrack", ".idea",
+                ".vscode", "build", "dist", "out", "__pycache__", ".gradle",
+                "vendor", ".next", ".claude", ".agents",
+            ];
+
+            for entry in walkdir::WalkDir::new(&self.index.root)
+                .into_iter()
+                .filter_entry(|e| {
+                    let name = e.file_name().to_string_lossy();
+                    if e.file_type().is_dir() {
+                        return !skip_dirs.contains(&name.as_ref())
+                            && !name.starts_with('.');
+                    }
+                    true
+                })
+                .filter_map(|e| e.ok())
+            {
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+                let path = entry.path();
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                let filename = path.file_name()
+                    .map(|f| f.to_string_lossy().to_string())
+                    .unwrap_or_default();
+
+                // Only look for markdown docs, READMEs, and doc directories
+                let is_doc = ext == "md"
+                    || filename.eq_ignore_ascii_case("README")
+                    || filename.eq_ignore_ascii_case("CHANGELOG")
+                    || filename.eq_ignore_ascii_case("CONTRIBUTING");
+
+                if !is_doc {
+                    continue;
+                }
+
+                let rel = path.strip_prefix(&self.index.root)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
+
+                // Skip if already imported
+                if imported_paths.contains(&rel)
+                    || imported_paths.contains(&filename)
+                {
+                    continue;
+                }
+
+                // Skip if there's a vault note with a matching title
+                let stem = path.file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let already_in_vault = self.index.vault_notes.iter().any(|e| {
+                    let title = &e.value().title;
+                    title.eq_ignore_ascii_case(&stem)
+                        || title.eq_ignore_ascii_case(&filename)
+                });
+                if already_in_vault {
+                    continue;
+                }
+
+                new_docs.push(rel);
+            }
+            new_docs.sort();
+        }
+
         // Build the report
         stale_notes.sort_by(|a, b| b.priority.cmp(&a.priority));
 
-        if stale_notes.is_empty() && undocumented_files.is_empty() {
+        if stale_notes.is_empty() && undocumented_files.is_empty() && new_docs.is_empty() {
             return "All documentation is up to date. No refresh needed.".to_string();
         }
 
@@ -703,9 +790,20 @@ impl DoctrackMcp {
             }
         }
 
-        report.push_str(&format!(
-            "\n---\n*Run `refresh_docs` again after updating to verify all issues are resolved.*"
-        ));
+        if !new_docs.is_empty() {
+            report.push_str(&format!(
+                "### New docs not yet imported ({})\n\nThese markdown/README files exist in the project but aren't in the vault. Import them to `references/imported/`.\n\n",
+                new_docs.len()
+            ));
+            for (i, file) in new_docs.iter().take(20).enumerate() {
+                report.push_str(&format!("{}. `{}`\n", i + 1, file));
+            }
+            if new_docs.len() > 20 {
+                report.push_str(&format!("... and {} more\n", new_docs.len() - 20));
+            }
+        }
+
+        report.push_str("\n---\n*Run `refresh_docs` again after updating to verify all issues are resolved.*");
 
         report
     }
